@@ -1,7 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 
-const VAZIO_PAUTA = { data: '', reporter: '', titulo: '', conteudo: '' }
+const VAZIO_PAUTA = { data: '', reporter: '', titulo: '', conteudo: '', pdfUrl: '' }
 const VAZIO_RELATORIO = { data: '', reporter: '', texto: '' }
 const AMARELO = '#FFD600'
 const ESCURO = '#111111'
@@ -26,18 +26,16 @@ const input = {
 export default function Home() {
   const [aba, setAba] = useState('pautas')
 
-  // Pautas
   const [pautas, setPautas] = useState([])
   const [formPauta, setFormPauta] = useState(VAZIO_PAUTA)
   const [editandoPauta, setEditandoPauta] = useState(null)
   const [expandido, setExpandido] = useState(null)
+  const [uploadando, setUploadando] = useState(false)
 
-  // Relatórios
   const [relatorios, setRelatorios] = useState([])
   const [formRel, setFormRel] = useState(VAZIO_RELATORIO)
   const [editandoRel, setEditandoRel] = useState(null)
 
-  // Filtro compartilhado
   const [filtroData, setFiltroData] = useState('')
   const [loading, setLoading] = useState(true)
 
@@ -60,7 +58,18 @@ export default function Home() {
     setRelatorios(data.sort((a, b) => a.data.localeCompare(b.data)))
   }
 
-  // CRUD Pautas
+  async function handlePdf(e) {
+    const file = e.target.files[0]
+    if (!file) return
+    setUploadando(true)
+    const fd = new FormData()
+    fd.append('file', file)
+    const res = await fetch('/api/upload', { method: 'POST', body: fd })
+    const data = await res.json()
+    setFormPauta(f => ({ ...f, pdfUrl: data.url }))
+    setUploadando(false)
+  }
+
   async function salvarPauta() {
     if (!formPauta.data || !formPauta.reporter || !formPauta.titulo) return alert('Preencha data, repórter e título.')
     if (editandoPauta) {
@@ -80,12 +89,11 @@ export default function Home() {
   }
 
   function editarPauta(p) {
-    setFormPauta({ data: p.data, reporter: p.reporter, titulo: p.titulo, conteudo: p.conteudo })
+    setFormPauta({ data: p.data, reporter: p.reporter, titulo: p.titulo, conteudo: p.conteudo, pdfUrl: p.pdfUrl || '' })
     setEditandoPauta(p.id)
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
-  // CRUD Relatórios
   async function salvarRelatorio() {
     if (!formRel.data || !formRel.reporter || !formRel.texto) return alert('Preencha data, repórter e relatório.')
     if (editandoRel) {
@@ -130,7 +138,6 @@ export default function Home() {
 
   return (
     <main style={{ minHeight: '100vh', background: ESCURO, color: TEXTO, fontFamily: "'Inter', 'Helvetica Neue', sans-serif" }}>
-      {/* Header */}
       <header style={{ background: '#000', borderBottom: `3px solid ${AMARELO}`, padding: '1rem 0', marginBottom: '2rem' }}>
         <div style={{ maxWidth: 720, margin: '0 auto', padding: '0 1.5rem', display: 'flex', alignItems: 'center', gap: 12 }}>
           <span style={{ background: AMARELO, color: '#000', fontWeight: 900, fontSize: 18, padding: '4px 10px', borderRadius: 6 }}>CAZÉ</span>
@@ -186,14 +193,35 @@ export default function Home() {
                 <input type="text" placeholder="Título resumido" value={formPauta.titulo}
                   onChange={e => setFormPauta({ ...formPauta, titulo: e.target.value })} style={input} />
               </div>
-              <div style={{ marginBottom: 16 }}>
+              <div style={{ marginBottom: 12 }}>
                 <label style={{ fontSize: 12, color: SUBTEXTO, fontWeight: 600, textTransform: 'uppercase' }}>Pauta completa</label>
                 <textarea placeholder="Descreva a pauta completa..." value={formPauta.conteudo}
                   onChange={e => setFormPauta({ ...formPauta, conteudo: e.target.value })}
                   rows={5} style={{ ...input, resize: 'vertical', lineHeight: 1.6 }} />
               </div>
+              <div style={{ marginBottom: 16 }}>
+                <label style={{ fontSize: 12, color: SUBTEXTO, fontWeight: 600, textTransform: 'uppercase' }}>Anexar PDF</label>
+                <div style={{ marginTop: 6, display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <label style={{
+                    background: '#222', border: `1px solid ${BORDA}`, borderRadius: 8, padding: '10px 16px',
+                    cursor: 'pointer', fontSize: 13, color: SUBTEXTO, fontWeight: 600
+                  }}>
+                    {uploadando ? 'Enviando...' : formPauta.pdfUrl ? '✅ PDF anexado' : '📎 Escolher PDF'}
+                    <input type="file" accept="application/pdf" onChange={handlePdf} style={{ display: 'none' }} />
+                  </label>
+                  {formPauta.pdfUrl && !uploadando && (
+                    <button onClick={() => setFormPauta(f => ({ ...f, pdfUrl: '' }))}
+                      style={{ background: 'none', border: 'none', color: '#ff4444', cursor: 'pointer', fontSize: 13, fontWeight: 600 }}>
+                      Remover
+                    </button>
+                  )}
+                </div>
+              </div>
               <div style={{ display: 'flex', gap: 8 }}>
-                <button onClick={salvarPauta} style={{ background: AMARELO, color: '#000', border: 'none', borderRadius: 8, padding: '10px 20px', cursor: 'pointer', fontWeight: 700, fontSize: 14 }}>
+                <button onClick={salvarPauta} disabled={uploadando} style={{
+                  background: AMARELO, color: '#000', border: 'none', borderRadius: 8,
+                  padding: '10px 20px', cursor: uploadando ? 'not-allowed' : 'pointer', fontWeight: 700, fontSize: 14, opacity: uploadando ? 0.6 : 1
+                }}>
                   {editandoPauta ? 'Salvar edição' : 'Adicionar pauta'}
                 </button>
                 {editandoPauta && (
@@ -229,18 +257,26 @@ export default function Home() {
                         <button onClick={() => deletarPauta(p.id)} style={{ background: 'none', border: 'none', color: '#ff4444', cursor: 'pointer', fontSize: 13, fontWeight: 600 }}>Deletar</button>
                       </div>
                     </div>
-                    {p.conteudo && (
-                      <div style={{ marginTop: 10 }}>
+                    <div style={{ marginTop: 10, display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+                      {p.conteudo && (
                         <button onClick={() => setExpandido(expandido === p.id ? null : p.id)}
                           style={{ background: 'none', border: 'none', color: SUBTEXTO, cursor: 'pointer', fontSize: 12, padding: 0, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5 }}>
                           {expandido === p.id ? '▲ Ocultar' : '▼ Ver pauta completa'}
                         </button>
-                        {expandido === p.id && (
-                          <p style={{ marginTop: 10, fontSize: 14, color: '#ccc', whiteSpace: 'pre-wrap', background: '#222', borderRadius: 8, padding: '12px 14px', lineHeight: 1.7, borderLeft: `3px solid ${AMARELO}` }}>
-                            {p.conteudo}
-                          </p>
-                        )}
-                      </div>
+                      )}
+                      {p.pdfUrl && (
+                        <a href={p.pdfUrl} target="_blank" rel="noopener noreferrer" style={{
+                          fontSize: 12, fontWeight: 600, color: AMARELO, textDecoration: 'none',
+                          textTransform: 'uppercase', letterSpacing: 0.5
+                        }}>
+                          📄 Ver PDF
+                        </a>
+                      )}
+                    </div>
+                    {expandido === p.id && p.conteudo && (
+                      <p style={{ marginTop: 10, fontSize: 14, color: '#ccc', whiteSpace: 'pre-wrap', background: '#222', borderRadius: 8, padding: '12px 14px', lineHeight: 1.7, borderLeft: `3px solid ${AMARELO}` }}>
+                        {p.conteudo}
+                      </p>
                     )}
                   </div>
                 ))}
