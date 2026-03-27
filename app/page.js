@@ -1,9 +1,9 @@
 'use client'
 import { useEffect, useState } from 'react'
 
-const VAZIO_PAUTA = { data: '', reporter: '', titulo: '', conteudo: '', pdfUrl: '' }
+const VAZIO_PAUTA = { data: '', dataFim: '', reporter: '', titulo: '', conteudo: '', pdfUrl: '' }
 const VAZIO_RELATORIO = { data: '', reporter: '', texto: '' }
-const VAZIO_PREVISAO = { data: '', titulo: '', descricao: '' }
+const VAZIO_PREVISAO = { data: '', dataFim: '', titulo: '', descricao: '' }
 const VAZIO_CONTATO = { nome: '', telefone: '', cargo: '' }
 const AMARELO = '#FFD600'
 const ESCURO = '#111111'
@@ -31,7 +31,28 @@ function formatarDataCurta(data) {
     weekday: 'short', day: '2-digit', month: 'short'
   })
 }
+function formatarDataSimples(data) {
+  return new Date(data + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })
+}
 function limparTelefone(tel) { return tel.replace(/\D/g, '') }
+
+function getDatasNoPeriodo(dataInicio, dataFim) {
+  const datas = []
+  const d = new Date(dataInicio + 'T12:00:00')
+  const fim = new Date((dataFim || dataInicio) + 'T12:00:00')
+  while (d <= fim) {
+    datas.push(d.toISOString().split('T')[0])
+    d.setDate(d.getDate() + 1)
+  }
+  return datas
+}
+
+function diffDias(dataInicio, dataFim) {
+  if (!dataFim || dataFim === dataInicio) return 1
+  const d1 = new Date(dataInicio + 'T12:00:00')
+  const d2 = new Date(dataFim + 'T12:00:00')
+  return Math.round((d2 - d1) / (1000 * 60 * 60 * 24)) + 1
+}
 
 function Highlight({ text, busca }) {
   if (!busca || !text) return <span>{text}</span>
@@ -43,14 +64,18 @@ function Calendario({ pautas, relatorios, previsoes, onDiaClick }) {
   const hoje = new Date()
   const [mes, setMes] = useState(hoje.getMonth())
   const [ano, setAno] = useState(hoje.getFullYear())
-
   const primeiroDia = new Date(ano, mes, 1).getDay()
   const totalDias = new Date(ano, mes + 1, 0).getDate()
   const hojeStr = `${ano}-${String(mes+1).padStart(2,'0')}-${String(hoje.getDate()).padStart(2,'0')}`
 
   function getDia(d) {
     const str = `${ano}-${String(mes+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`
-    return { str, pautas: pautas.filter(p => p.data === str), relatorios: relatorios.filter(r => r.data === str), previsoes: previsoes.filter(p => p.data === str) }
+    return {
+      str,
+      pautas: pautas.filter(p => getDatasNoPeriodo(p.data, p.dataFim).includes(str)),
+      relatorios: relatorios.filter(r => r.data === str),
+      previsoes: previsoes.filter(p => getDatasNoPeriodo(p.data, p.dataFim).includes(str)),
+    }
   }
 
   function navMes(dir) {
@@ -90,7 +115,9 @@ function Calendario({ pautas, relatorios, previsoes, onDiaClick }) {
               onMouseLeave={e => { if (!isHoje) e.currentTarget.style.borderColor = BORDA }}>
               <div style={{ fontSize: 12, fontWeight: 700, color: isHoje ? AMARELO : SUBTEXTO, marginBottom: 4 }}>{d}</div>
               {info.pautas.slice(0, MAX).map((p, j) => (
-                <div key={j} style={{ background: AMARELO, color: '#000', borderRadius: 4, padding: '2px 5px', fontSize: 10, fontWeight: 700, marginBottom: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.titulo}</div>
+                <div key={j} style={{ background: AMARELO, color: '#000', borderRadius: 4, padding: '2px 5px', fontSize: 10, fontWeight: 700, marginBottom: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {p.dataFim && p.dataFim !== p.data ? '🗓 ' : ''}{p.titulo}
+                </div>
               ))}
               {info.relatorios.slice(0, info.pautas.length < MAX ? MAX - info.pautas.length : 0).map((r, j) => (
                 <div key={j} style={{ background: '#2A2A2A', color: '#888', border: '0.5px solid #444', borderRadius: 4, padding: '2px 5px', fontSize: 10, marginBottom: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>📝 {r.reporter}</div>
@@ -121,8 +148,8 @@ export default function Home() {
   const [uploadando, setUploadando] = useState(false)
   const [loading, setLoading] = useState(true)
   const [mostrarForm, setMostrarForm] = useState(false)
-  const [editandoContato, setEditandoContato] = useState(null)
   const [formContato, setFormContato] = useState(VAZIO_CONTATO)
+  const [editandoContato, setEditandoContato] = useState(null)
   const [formPauta, setFormPauta] = useState(VAZIO_PAUTA)
   const [editandoPauta, setEditandoPauta] = useState(null)
   const [formRel, setFormRel] = useState(VAZIO_RELATORIO)
@@ -152,22 +179,40 @@ export default function Home() {
   async function carregarPrevisoes() { const r = await fetch('/api/previsoes'); setPrevisoes((await r.json()).sort((a,b) => a.data.localeCompare(b.data))) }
   async function carregarContatos() { const r = await fetch('/api/contatos'); setContatos((await r.json()).sort((a,b) => a.nome.localeCompare(b.nome))) }
 
-  function agruparPorData(lista) {
-    return lista.reduce((acc, p) => { acc[p.data] = acc[p.data] || []; acc[p.data].push(p); return acc }, {})
+  // Gera lista de datas únicas para a sidebar considerando períodos
+  function getDatasUnicas(lista) {
+    const set = new Set()
+    lista.forEach(item => {
+      getDatasNoPeriodo(item.data, item.dataFim).forEach(d => set.add(d))
+    })
+    return Array.from(set).sort()
+  }
+
+  function getItensDoDia(lista, data) {
+    return lista.filter(item => getDatasNoPeriodo(item.data, item.dataFim).includes(data))
   }
 
   function enviarWhatsApp(pauta) {
     const contato = contatos.find(c => c.nome.toLowerCase().includes(pauta.reporter.toLowerCase()) || pauta.reporter.toLowerCase().includes(c.nome.toLowerCase()))
     const tel = contato ? limparTelefone(contato.telefone) : ''
-    const msg = `📋 *PAUTA - CazéTV*\n📅 ${formatarData(pauta.data)}\n👤 Repórter: ${pauta.reporter}\n\n*${pauta.titulo}*${pauta.conteudo ? '\n\n' + pauta.conteudo : ''}${pauta.pdfUrl ? '\n\n📄 PDF: ' + pauta.pdfUrl : ''}`
+    const periodo = pauta.dataFim && pauta.dataFim !== pauta.data
+      ? `📅 ${formatarDataSimples(pauta.data)} até ${formatarDataSimples(pauta.dataFim)} (${diffDias(pauta.data, pauta.dataFim)} dias)`
+      : `📅 ${formatarData(pauta.data)}`
+    const msg = `📋 *PAUTA - CazéTV*\n${periodo}\n👤 Repórter: ${pauta.reporter}\n\n*${pauta.titulo}*${pauta.conteudo ? '\n\n' + pauta.conteudo : ''}${pauta.pdfUrl ? '\n\n📄 PDF: ' + pauta.pdfUrl : ''}`
     window.open(tel ? `https://wa.me/${tel}?text=${encodeURIComponent(msg)}` : `https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank')
   }
 
-  const porDataPautas = agruparPorData(pautas)
-  const porDataRelatorios = agruparPorData(relatorios)
-  const porDataPrevisoes = agruparPorData(previsoes)
-  const datas = aba === 'pautas' ? Object.keys(porDataPautas).sort() : aba === 'relatorios' ? Object.keys(porDataRelatorios).sort() : Object.keys(porDataPrevisoes).sort()
-  const itensDoDia = aba === 'pautas' ? (porDataPautas[dataSelecionada] || []) : aba === 'relatorios' ? (porDataRelatorios[dataSelecionada] || []) : (porDataPrevisoes[dataSelecionada] || [])
+  const datasP = getDatasUnicas(pautas)
+  const datasR = getDatasUnicas(relatorios)
+  const datasV = getDatasUnicas(previsoes)
+  const datas = aba === 'pautas' ? datasP : aba === 'relatorios' ? datasR : datasV
+
+  const itensDoDia = dataSelecionada
+    ? aba === 'pautas' ? getItensDoDia(pautas, dataSelecionada)
+      : aba === 'relatorios' ? getItensDoDia(relatorios, dataSelecionada)
+      : getItensDoDia(previsoes, dataSelecionada)
+    : []
+
   const contatosFiltrados = contatos.filter(c => c.nome.toLowerCase().includes(busca.toLowerCase()) || (c.cargo||'').toLowerCase().includes(busca.toLowerCase()))
   const q = buscaGeral.toLowerCase()
   const pautasEncontradas = q ? pautas.filter(p => (p.titulo||'').toLowerCase().includes(q)||(p.conteudo||'').toLowerCase().includes(q)||(p.reporter||'').toLowerCase().includes(q)) : []
@@ -186,12 +231,14 @@ export default function Home() {
 
   async function salvarPauta() {
     if (!formPauta.data||!formPauta.reporter||!formPauta.titulo) return alert('Preencha data, repórter e título.')
-    if (editandoPauta) { await fetch('/api/pautas', { method: 'PUT', body: JSON.stringify({ ...formPauta, id: editandoPauta }) }); setEditandoPauta(null) }
-    else await fetch('/api/pautas', { method: 'POST', body: JSON.stringify(formPauta) })
+    const payload = { ...formPauta, dataFim: formPauta.dataFim || formPauta.data }
+    if (editandoPauta) { await fetch('/api/pautas', { method: 'PUT', body: JSON.stringify({ ...payload, id: editandoPauta }) }); setEditandoPauta(null) }
+    else await fetch('/api/pautas', { method: 'POST', body: JSON.stringify(payload) })
     setDataSelecionada(formPauta.data); setFormPauta(VAZIO_PAUTA); setMostrarForm(false); carregarPautas()
   }
+
   async function deletarPauta(id) { if (!confirm('Deletar?')) return; await fetch('/api/pautas', { method: 'DELETE', body: JSON.stringify({ id }) }); carregarPautas() }
-  function editarPauta(p) { setFormPauta({ data:p.data, reporter:p.reporter, titulo:p.titulo, conteudo:p.conteudo, pdfUrl:p.pdfUrl||'' }); setEditandoPauta(p.id); setMostrarForm(true); window.scrollTo({top:0,behavior:'smooth'}) }
+  function editarPauta(p) { setFormPauta({ data:p.data, dataFim:p.dataFim||'', reporter:p.reporter, titulo:p.titulo, conteudo:p.conteudo, pdfUrl:p.pdfUrl||'' }); setEditandoPauta(p.id); setMostrarForm(true); window.scrollTo({top:0,behavior:'smooth'}) }
 
   async function salvarRelatorio() {
     if (!formRel.data||!formRel.reporter||!formRel.texto) return alert('Preencha data, repórter e relatório.')
@@ -204,12 +251,13 @@ export default function Home() {
 
   async function salvarPrevisao() {
     if (!formPrev.data||!formPrev.titulo) return alert('Preencha data e título.')
-    if (editandoPrev) { await fetch('/api/previsoes', { method: 'PUT', body: JSON.stringify({ ...formPrev, id: editandoPrev }) }); setEditandoPrev(null) }
-    else await fetch('/api/previsoes', { method: 'POST', body: JSON.stringify(formPrev) })
+    const payload = { ...formPrev, dataFim: formPrev.dataFim || formPrev.data }
+    if (editandoPrev) { await fetch('/api/previsoes', { method: 'PUT', body: JSON.stringify({ ...payload, id: editandoPrev }) }); setEditandoPrev(null) }
+    else await fetch('/api/previsoes', { method: 'POST', body: JSON.stringify(payload) })
     setDataSelecionada(formPrev.data); setFormPrev(VAZIO_PREVISAO); setMostrarForm(false); carregarPrevisoes()
   }
   async function deletarPrevisao(id) { if (!confirm('Deletar?')) return; await fetch('/api/previsoes', { method: 'DELETE', body: JSON.stringify({ id }) }); carregarPrevisoes() }
-  function editarPrevisao(p) { setFormPrev({ data:p.data, titulo:p.titulo, descricao:p.descricao||'' }); setEditandoPrev(p.id); setMostrarForm(true); window.scrollTo({top:0,behavior:'smooth'}) }
+  function editarPrevisao(p) { setFormPrev({ data:p.data, dataFim:p.dataFim||'', titulo:p.titulo, descricao:p.descricao||'' }); setEditandoPrev(p.id); setMostrarForm(true); window.scrollTo({top:0,behavior:'smooth'}) }
 
   async function salvarContato() {
     if (!formContato.nome||!formContato.telefone) return alert('Preencha nome e telefone.')
@@ -234,6 +282,25 @@ export default function Home() {
     { id: 'calendario', label: '📅 Calendário' },
   ]
 
+  function PeriodoTag({ item }) {
+    const isMulti = item.dataFim && item.dataFim !== item.data
+    if (!isMulti) return null
+    const total = diffDias(item.data, item.dataFim)
+    return (
+      <span style={{ display: 'inline-block', background: '#2A2A2A', color: AMARELO, border: `0.5px solid ${AMARELO}`, borderRadius: 20, padding: '2px 10px', fontSize: 11, fontWeight: 700, marginTop: 6 }}>
+        🗓 {formatarDataSimples(item.data)} → {formatarDataSimples(item.dataFim)} · {total} dias
+      </span>
+    )
+  }
+
+  function DiaInfo({ item, diaAtual }) {
+    if (!item.dataFim || item.dataFim === item.data) return null
+    const datas = getDatasNoPeriodo(item.data, item.dataFim)
+    const diaNum = datas.indexOf(diaAtual) + 1
+    const total = datas.length
+    return <span style={{ fontSize: 11, color: SUBTEXTO, marginLeft: 8 }}>dia {diaNum} de {total}</span>
+  }
+
   function CardPauta({ p }) {
     const contato = contatos.find(c => c.nome.toLowerCase().includes(p.reporter.toLowerCase()) || p.reporter.toLowerCase().includes(c.nome.toLowerCase()))
     return (
@@ -241,8 +308,15 @@ export default function Home() {
         onMouseEnter={e => e.currentTarget.style.borderColor = AMARELO}
         onMouseLeave={e => e.currentTarget.style.borderColor = BORDA}>
         <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-          <div><p style={{ margin: 0, fontWeight: 700, fontSize: 15 }}>{p.titulo}</p><p style={{ margin: '4px 0 0', fontSize: 13, color: SUBTEXTO }}>👤 {p.reporter}</p></div>
-          <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+          <div>
+            <p style={{ margin: 0, fontWeight: 700, fontSize: 15 }}>{p.titulo}</p>
+            <p style={{ margin: '4px 0 0', fontSize: 13, color: SUBTEXTO }}>
+              👤 {p.reporter}
+              {dataSelecionada && <DiaInfo item={p} diaAtual={dataSelecionada} />}
+            </p>
+            <PeriodoTag item={p} />
+          </div>
+          <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start', flexShrink: 0, marginLeft: 12 }}>
             <button onClick={() => enviarWhatsApp(p)} style={{ background: '#25D366', color: '#fff', border: 'none', borderRadius: 8, padding: '6px 12px', cursor: 'pointer', fontSize: 12, fontWeight: 700 }}>📲 {contato ? 'Enviar' : 'WhatsApp'}</button>
             <button onClick={() => editarPauta(p)} style={{ background: 'none', border: 'none', color: AMARELO, cursor: 'pointer', fontSize: 13, fontWeight: 600 }}>Editar</button>
             <button onClick={() => deletarPauta(p.id)} style={{ background: 'none', border: 'none', color: '#ff4444', cursor: 'pointer', fontSize: 13, fontWeight: 600 }}>Deletar</button>
@@ -253,6 +327,27 @@ export default function Home() {
           {p.pdfUrl && <a href={p.pdfUrl} target="_blank" rel="noopener noreferrer" style={{ fontSize: 12, fontWeight: 600, color: AMARELO, textDecoration: 'none', textTransform: 'uppercase', letterSpacing: 0.5 }}>📄 Ver PDF</a>}
         </div>
         {expandido === p.id && p.conteudo && <p style={{ marginTop: 10, fontSize: 14, color: '#ccc', whiteSpace: 'pre-wrap', background: '#222', borderRadius: 8, padding: '12px 14px', lineHeight: 1.7, borderLeft: `3px solid ${AMARELO}` }}>{p.conteudo}</p>}
+      </div>
+    )
+  }
+
+  function FormDataPeriodo({ dataInicio, dataFim, onChangeInicio, onChangeFim }) {
+    const dias = dataInicio ? diffDias(dataInicio, dataFim || dataInicio) : 0
+    return (
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+        <div>
+          <label style={{ fontSize: 11, color: SUBTEXTO, fontWeight: 700, textTransform: 'uppercase' }}>Data início</label>
+          <input type="date" value={dataInicio} onChange={e => onChangeInicio(e.target.value)} style={{ ...inp, colorScheme: 'dark' }} />
+        </div>
+        <div>
+          <label style={{ fontSize: 11, color: SUBTEXTO, fontWeight: 700, textTransform: 'uppercase' }}>Data fim <span style={{ color: '#555', fontWeight: 400, textTransform: 'none' }}>(opcional)</span></label>
+          <input type="date" value={dataFim} min={dataInicio} onChange={e => onChangeFim(e.target.value)} style={{ ...inp, colorScheme: 'dark' }} />
+        </div>
+        {dataInicio && dataFim && dataFim !== dataInicio && (
+          <div style={{ gridColumn: '1/-1', marginTop: -6 }}>
+            <span style={{ fontSize: 11, color: AMARELO, fontWeight: 600 }}>✓ {dias} dias selecionados ({formatarDataSimples(dataInicio)} → {formatarDataSimples(dataFim)})</span>
+          </div>
+        )}
       </div>
     )
   }
@@ -281,18 +376,19 @@ export default function Home() {
             <p style={{ fontSize: 10, color: SUBTEXTO, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, padding: '0 6px', marginBottom: 4 }}>Datas</p>
             {loading && <p style={{ fontSize: 12, color: SUBTEXTO, padding: '0 6px' }}>Carregando...</p>}
             {!loading && datas.length === 0 && <p style={{ fontSize: 12, color: SUBTEXTO, padding: '0 6px' }}>Nenhum registro.</p>}
-            {datas.map(d => (
-              <button key={d} onClick={() => { setDataSelecionada(d); setMostrarForm(false) }} style={{
-                width: '100%', textAlign: 'left', border: 'none', borderRadius: 8, padding: '10px 12px', cursor: 'pointer',
-                background: dataSelecionada === d ? AMARELO : CARD, color: dataSelecionada === d ? '#000' : TEXTO,
-                outline: dataSelecionada === d ? 'none' : `1px solid ${BORDA}`,
-              }}>
-                <span style={{ display: 'block', fontSize: 13, fontWeight: 700 }}>{formatarDataCurta(d)}</span>
-                <span style={{ display: 'block', fontSize: 11, opacity: 0.7, marginTop: 2 }}>
-                  {aba === 'pautas' ? porDataPautas[d]?.length : aba === 'relatorios' ? porDataRelatorios[d]?.length : porDataPrevisoes[d]?.length} {aba === 'pautas' ? 'pauta(s)' : aba === 'relatorios' ? 'relatório(s)' : 'previsão(ões)'}
-                </span>
-              </button>
-            ))}
+            {datas.map(d => {
+              const count = aba === 'pautas' ? getItensDoDia(pautas, d).length : aba === 'relatorios' ? getItensDoDia(relatorios, d).length : getItensDoDia(previsoes, d).length
+              return (
+                <button key={d} onClick={() => { setDataSelecionada(d); setMostrarForm(false) }} style={{
+                  width: '100%', textAlign: 'left', border: 'none', borderRadius: 8, padding: '10px 12px', cursor: 'pointer',
+                  background: dataSelecionada === d ? AMARELO : CARD, color: dataSelecionada === d ? '#000' : TEXTO,
+                  outline: dataSelecionada === d ? 'none' : `1px solid ${BORDA}`,
+                }}>
+                  <span style={{ display: 'block', fontSize: 13, fontWeight: 700 }}>{formatarDataCurta(d)}</span>
+                  <span style={{ display: 'block', fontSize: 11, opacity: 0.7, marginTop: 2 }}>{count} {aba === 'pautas' ? 'pauta(s)' : aba === 'relatorios' ? 'relatório(s)' : 'previsão(ões)'}</span>
+                </button>
+              )
+            })}
             <button onClick={() => { setMostrarForm(true); setDataSelecionada(null); cancelar() }} style={{
               marginTop: 8, width: '100%', padding: '6px 0', background: 'transparent',
               border: `1px dashed ${BORDA}`, borderRadius: 8, color: '#444', fontSize: 11, cursor: 'pointer'
@@ -323,6 +419,7 @@ export default function Home() {
                         <div key={p.id} style={{ background: '#222', borderRadius: 10, padding: '10px 14px', marginBottom: 8 }}>
                           <p style={{ margin: 0, fontWeight: 700, fontSize: 14 }}>{p.titulo}</p>
                           <p style={{ margin: '4px 0 0', fontSize: 12, color: SUBTEXTO }}>👤 {p.reporter}</p>
+                          {p.dataFim && p.dataFim !== p.data && <span style={{ display: 'inline-block', background: '#2A2A2A', color: AMARELO, borderRadius: 20, padding: '2px 8px', fontSize: 10, fontWeight: 700, marginTop: 4 }}>🗓 {formatarDataSimples(p.data)} → {formatarDataSimples(p.dataFim)}</span>}
                           {p.conteudo && <p style={{ margin: '8px 0 0', fontSize: 13, color: '#aaa', lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>{p.conteudo}</p>}
                           <div style={{ marginTop: 10, display: 'flex', gap: 10 }}>
                             <button onClick={() => enviarWhatsApp(p)} style={{ background: '#25D366', color: '#fff', border: 'none', borderRadius: 6, padding: '5px 10px', cursor: 'pointer', fontSize: 12, fontWeight: 700 }}>📲 WhatsApp</button>
@@ -345,6 +442,7 @@ export default function Home() {
                       {diaModal.previsoes.map(p => (
                         <div key={p.id} style={{ background: '#222', borderRadius: 10, padding: '10px 14px', marginBottom: 8 }}>
                           <p style={{ margin: 0, fontWeight: 700, fontSize: 14 }}>{p.titulo}</p>
+                          {p.dataFim && p.dataFim !== p.data && <span style={{ display: 'inline-block', background: '#2A2A2A', color: '#8888ff', borderRadius: 20, padding: '2px 8px', fontSize: 10, fontWeight: 700, marginTop: 4 }}>🗓 {formatarDataSimples(p.data)} → {formatarDataSimples(p.dataFim)}</span>}
                           {p.descricao && <p style={{ margin: '8px 0 0', fontSize: 13, color: '#aaa', whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>{p.descricao}</p>}
                         </div>
                       ))}
@@ -361,9 +459,9 @@ export default function Home() {
               {!buscaGeral && <p style={{ color: SUBTEXTO, fontSize: 14, textAlign: 'center', padding: '3rem 0' }}>Digite algo para começar a busca.</p>}
               {buscaGeral && (<>
                 {[
-                  { label: 'Pautas', items: pautasEncontradas, render: p => <><p style={{ margin:0, fontWeight:700, fontSize:14 }}><Highlight text={p.titulo} busca={buscaGeral}/></p><p style={{ margin:'4px 0 0', fontSize:12, color:SUBTEXTO }}>👤 <Highlight text={p.reporter} busca={buscaGeral}/> · 📅 {formatarDataCurta(p.data)}</p>{p.conteudo && <p style={{ margin:'8px 0 0', fontSize:13, color:'#aaa', lineHeight:1.5 }}><Highlight text={p.conteudo.slice(0,150)+(p.conteudo.length>150?'..':'')} busca={buscaGeral}/></p>}</> },
+                  { label: 'Pautas', items: pautasEncontradas, render: p => <><p style={{ margin:0, fontWeight:700, fontSize:14 }}><Highlight text={p.titulo} busca={buscaGeral}/></p><p style={{ margin:'4px 0 0', fontSize:12, color:SUBTEXTO }}>👤 <Highlight text={p.reporter} busca={buscaGeral}/> · 📅 {formatarDataSimples(p.data)}{p.dataFim && p.dataFim !== p.data ? ` → ${formatarDataSimples(p.dataFim)}` : ''}</p>{p.conteudo && <p style={{ margin:'8px 0 0', fontSize:13, color:'#aaa', lineHeight:1.5 }}><Highlight text={p.conteudo.slice(0,150)+(p.conteudo.length>150?'..':'')} busca={buscaGeral}/></p>}</> },
                   { label: 'Relatórios', items: relatoriosEncontrados, render: r => <><p style={{ margin:0, fontSize:12, color:SUBTEXTO }}>👤 <Highlight text={r.reporter} busca={buscaGeral}/> · 📅 {formatarDataCurta(r.data)}</p><p style={{ margin:'8px 0 0', fontSize:13, color:'#aaa', lineHeight:1.5 }}><Highlight text={r.texto.slice(0,150)+(r.texto.length>150?'..':'')} busca={buscaGeral}/></p></> },
-                  { label: 'Previsões', items: previsoesEncontradas, render: p => <><p style={{ margin:0, fontWeight:700, fontSize:14 }}><Highlight text={p.titulo} busca={buscaGeral}/></p><p style={{ margin:'4px 0 0', fontSize:12, color:SUBTEXTO }}>📅 {formatarDataCurta(p.data)}</p>{p.descricao && <p style={{ margin:'8px 0 0', fontSize:13, color:'#aaa', lineHeight:1.5 }}><Highlight text={p.descricao.slice(0,150)+(p.descricao.length>150?'..':'')} busca={buscaGeral}/></p>}</> },
+                  { label: 'Previsões', items: previsoesEncontradas, render: p => <><p style={{ margin:0, fontWeight:700, fontSize:14 }}><Highlight text={p.titulo} busca={buscaGeral}/></p><p style={{ margin:'4px 0 0', fontSize:12, color:SUBTEXTO }}>📅 {formatarDataSimples(p.data)}{p.dataFim && p.dataFim !== p.data ? ` → ${formatarDataSimples(p.dataFim)}` : ''}</p>{p.descricao && <p style={{ margin:'8px 0 0', fontSize:13, color:'#aaa', lineHeight:1.5 }}><Highlight text={p.descricao.slice(0,150)+(p.descricao.length>150?'..':'')} busca={buscaGeral}/></p>}</> },
                 ].map(({ label, items, render }) => (
                   <div key={label} style={{ marginBottom: '1.5rem' }}>
                     <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:10 }}>
@@ -432,9 +530,13 @@ export default function Home() {
             <div style={{ background:CARD, border:`1px solid ${BORDA}`, borderRadius:16, padding:'1.5rem', marginBottom:'1.5rem' }}>
               <h2 style={{ margin:'0 0 1rem', fontSize:15, fontWeight:700, color:AMARELO }}>{(editandoPauta||editandoRel||editandoPrev)?'✏️ Editar':`+ ${aba==='pautas'?'Nova Pauta':aba==='relatorios'?'Novo Relatório':'Nova Previsão'}`}</h2>
               {aba === 'pautas' && (<>
+                <FormDataPeriodo
+                  dataInicio={formPauta.data} dataFim={formPauta.dataFim}
+                  onChangeInicio={v => setFormPauta({...formPauta, data: v})}
+                  onChangeFim={v => setFormPauta({...formPauta, dataFim: v})}
+                />
                 <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12, marginBottom:12 }}>
-                  <div><label style={{ fontSize:11, color:SUBTEXTO, fontWeight:700, textTransform:'uppercase' }}>Data</label><input type="date" value={formPauta.data} onChange={e => setFormPauta({...formPauta,data:e.target.value})} style={{...inp,colorScheme:'dark'}} /></div>
-                  <div><label style={{ fontSize:11, color:SUBTEXTO, fontWeight:700, textTransform:'uppercase' }}>Repórter</label><input type="text" placeholder="Nome" value={formPauta.reporter} onChange={e => setFormPauta({...formPauta,reporter:e.target.value})} style={inp} /></div>
+                  <div style={{ gridColumn:'1/-1' }}><label style={{ fontSize:11, color:SUBTEXTO, fontWeight:700, textTransform:'uppercase' }}>Repórter</label><input type="text" placeholder="Nome" value={formPauta.reporter} onChange={e => setFormPauta({...formPauta,reporter:e.target.value})} style={inp} /></div>
                 </div>
                 <div style={{ marginBottom:12 }}><label style={{ fontSize:11, color:SUBTEXTO, fontWeight:700, textTransform:'uppercase' }}>Título</label><input type="text" placeholder="Título resumido" value={formPauta.titulo} onChange={e => setFormPauta({...formPauta,titulo:e.target.value})} style={inp} /></div>
                 <div style={{ marginBottom:12 }}><label style={{ fontSize:11, color:SUBTEXTO, fontWeight:700, textTransform:'uppercase' }}>Pauta completa</label><textarea placeholder="Descreva a pauta..." value={formPauta.conteudo} onChange={e => setFormPauta({...formPauta,conteudo:e.target.value})} rows={5} style={{...inp,resize:'vertical',lineHeight:1.6}} /></div>
@@ -457,7 +559,11 @@ export default function Home() {
                 <div style={{ marginBottom:16 }}><label style={{ fontSize:11, color:SUBTEXTO, fontWeight:700, textTransform:'uppercase' }}>Relatório</label><textarea placeholder="O que aconteceu hoje..." value={formRel.texto} onChange={e => setFormRel({...formRel,texto:e.target.value})} rows={3} style={{...inp,resize:'vertical',lineHeight:1.6}} /></div>
               </>)}
               {aba === 'previsoes' && (<>
-                <div style={{ marginBottom:12 }}><label style={{ fontSize:11, color:SUBTEXTO, fontWeight:700, textTransform:'uppercase' }}>Data prevista</label><input type="date" value={formPrev.data} onChange={e => setFormPrev({...formPrev,data:e.target.value})} style={{...inp,colorScheme:'dark'}} /></div>
+                <FormDataPeriodo
+                  dataInicio={formPrev.data} dataFim={formPrev.dataFim}
+                  onChangeInicio={v => setFormPrev({...formPrev, data: v})}
+                  onChangeFim={v => setFormPrev({...formPrev, dataFim: v})}
+                />
                 <div style={{ marginBottom:12 }}><label style={{ fontSize:11, color:SUBTEXTO, fontWeight:700, textTransform:'uppercase' }}>Título</label><input type="text" placeholder="Nome da pauta prevista" value={formPrev.titulo} onChange={e => setFormPrev({...formPrev,titulo:e.target.value})} style={inp} /></div>
                 <div style={{ marginBottom:16 }}><label style={{ fontSize:11, color:SUBTEXTO, fontWeight:700, textTransform:'uppercase' }}>Descrição</label><textarea placeholder="Detalhes sobre a previsão..." value={formPrev.descricao} onChange={e => setFormPrev({...formPrev,descricao:e.target.value})} rows={4} style={{...inp,resize:'vertical',lineHeight:1.6}} /></div>
               </>)}
@@ -503,7 +609,10 @@ export default function Home() {
                   onMouseEnter={e => e.currentTarget.style.borderColor = AMARELO}
                   onMouseLeave={e => e.currentTarget.style.borderColor = BORDA}>
                   <div style={{ display:'flex', justifyContent:'space-between' }}>
-                    <p style={{ margin:0, fontWeight:700, fontSize:15 }}>{p.titulo}</p>
+                    <div>
+                      <p style={{ margin:0, fontWeight:700, fontSize:15 }}>{p.titulo}</p>
+                      <PeriodoTag item={p} />
+                    </div>
                     <div style={{ display:'flex', gap:12 }}>
                       <button onClick={() => editarPrevisao(p)} style={{ background:'none', border:'none', color:AMARELO, cursor:'pointer', fontSize:13, fontWeight:600 }}>Editar</button>
                       <button onClick={() => deletarPrevisao(p.id)} style={{ background:'none', border:'none', color:'#ff4444', cursor:'pointer', fontSize:13, fontWeight:600 }}>Deletar</button>
