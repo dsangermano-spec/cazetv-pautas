@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 
 const VAZIO_PAUTA = { data: '', reporter: '', titulo: '', conteudo: '', pdfUrl: '' }
 const VAZIO_RELATORIO = { data: '', reporter: '', texto: '' }
+const VAZIO_PREVISAO = { data: '', titulo: '', descricao: '' }
 const AMARELO = '#FFD600'
 const ESCURO = '#111111'
 const CARD = '#1A1A1A'
@@ -32,6 +33,7 @@ export default function Home() {
   const [aba, setAba] = useState('pautas')
   const [pautas, setPautas] = useState([])
   const [relatorios, setRelatorios] = useState([])
+  const [previsoes, setPrevisoes] = useState([])
   const [dataSelecionada, setDataSelecionada] = useState(null)
   const [expandido, setExpandido] = useState(null)
   const [uploadando, setUploadando] = useState(false)
@@ -42,23 +44,43 @@ export default function Home() {
   const [editandoPauta, setEditandoPauta] = useState(null)
   const [formRel, setFormRel] = useState(VAZIO_RELATORIO)
   const [editandoRel, setEditandoRel] = useState(null)
+  const [formPrev, setFormPrev] = useState(VAZIO_PREVISAO)
+  const [editandoPrev, setEditandoPrev] = useState(null)
 
-  useEffect(() => { carregarPautas(); carregarRelatorios() }, [])
+  useEffect(() => { carregarTudo() }, [])
+
+  async function carregarTudo() {
+    setLoading(true)
+    const [rP, rR, rPrev] = await Promise.all([
+      fetch('/api/pautas').then(r => r.json()),
+      fetch('/api/relatorios').then(r => r.json()),
+      fetch('/api/previsoes').then(r => r.json()),
+    ])
+    const sortedP = rP.sort((a, b) => a.data.localeCompare(b.data))
+    const sortedR = rR.sort((a, b) => a.data.localeCompare(b.data))
+    const sortedPrev = rPrev.sort((a, b) => a.data.localeCompare(b.data))
+    setPautas(sortedP)
+    setRelatorios(sortedR)
+    setPrevisoes(sortedPrev)
+    setLoading(false)
+  }
 
   async function carregarPautas() {
-    setLoading(true)
     const res = await fetch('/api/pautas')
     const data = await res.json()
-    const sorted = data.sort((a, b) => a.data.localeCompare(b.data))
-    setPautas(sorted)
-    if (sorted.length > 0 && !dataSelecionada) setDataSelecionada(sorted[0].data)
-    setLoading(false)
+    setPautas(data.sort((a, b) => a.data.localeCompare(b.data)))
   }
 
   async function carregarRelatorios() {
     const res = await fetch('/api/relatorios')
     const data = await res.json()
     setRelatorios(data.sort((a, b) => a.data.localeCompare(b.data)))
+  }
+
+  async function carregarPrevisoes() {
+    const res = await fetch('/api/previsoes')
+    const data = await res.json()
+    setPrevisoes(data.sort((a, b) => a.data.localeCompare(b.data)))
   }
 
   function agruparPorData(lista) {
@@ -71,12 +93,15 @@ export default function Home() {
 
   const porDataPautas = agruparPorData(pautas)
   const porDataRelatorios = agruparPorData(relatorios)
-  const datasP = Object.keys(porDataPautas).sort()
-  const datasR = Object.keys(porDataRelatorios).sort()
-  const datas = aba === 'pautas' ? datasP : datasR
-  const itensDoDia = aba === 'pautas'
-    ? (porDataPautas[dataSelecionada] || [])
-    : (porDataRelatorios[dataSelecionada] || [])
+  const porDataPrevisoes = agruparPorData(previsoes)
+
+  const datas = aba === 'pautas' ? Object.keys(porDataPautas).sort()
+    : aba === 'relatorios' ? Object.keys(porDataRelatorios).sort()
+    : Object.keys(porDataPrevisoes).sort()
+
+  const itensDoDia = aba === 'pautas' ? (porDataPautas[dataSelecionada] || [])
+    : aba === 'relatorios' ? (porDataRelatorios[dataSelecionada] || [])
+    : (porDataPrevisoes[dataSelecionada] || [])
 
   async function handlePdf(e) {
     const file = e.target.files[0]
@@ -144,15 +169,48 @@ export default function Home() {
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
+  async function salvarPrevisao() {
+    if (!formPrev.data || !formPrev.titulo) return alert('Preencha data e título.')
+    if (editandoPrev) {
+      await fetch('/api/previsoes', { method: 'PUT', body: JSON.stringify({ ...formPrev, id: editandoPrev }) })
+      setEditandoPrev(null)
+    } else {
+      await fetch('/api/previsoes', { method: 'POST', body: JSON.stringify(formPrev) })
+    }
+    setDataSelecionada(formPrev.data)
+    setFormPrev(VAZIO_PREVISAO)
+    setMostrarForm(false)
+    carregarPrevisoes()
+  }
+
+  async function deletarPrevisao(id) {
+    if (!confirm('Deletar esta previsão?')) return
+    await fetch('/api/previsoes', { method: 'DELETE', body: JSON.stringify({ id }) })
+    carregarPrevisoes()
+  }
+
+  function editarPrevisao(p) {
+    setFormPrev({ data: p.data, titulo: p.titulo, descricao: p.descricao || '' })
+    setEditandoPrev(p.id)
+    setMostrarForm(true)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
   function cancelar() {
     setFormPauta(VAZIO_PAUTA)
     setFormRel(VAZIO_RELATORIO)
+    setFormPrev(VAZIO_PREVISAO)
     setEditandoPauta(null)
     setEditandoRel(null)
+    setEditandoPrev(null)
     setMostrarForm(false)
   }
 
-  const hoje = new Date().toISOString().split('T')[0]
+  const abas = [
+    { id: 'pautas', label: '📋 Pautas' },
+    { id: 'relatorios', label: '📝 Relatórios' },
+    { id: 'previsoes', label: '🔭 Previsões' },
+  ]
 
   return (
     <main style={{ minHeight: '100vh', background: ESCURO, color: TEXTO, fontFamily: "'Inter','Helvetica Neue',sans-serif", display: 'flex', flexDirection: 'column' }}>
@@ -165,12 +223,12 @@ export default function Home() {
 
       {/* Abas */}
       <div style={{ display: 'flex', gap: 4, padding: '8px 12px', background: CARD, borderBottom: `1px solid ${BORDA}`, flexShrink: 0 }}>
-        {['pautas', 'relatorios'].map(a => (
-          <button key={a} onClick={() => { setAba(a); setDataSelecionada(null); setMostrarForm(false) }} style={{
+        {abas.map(a => (
+          <button key={a.id} onClick={() => { setAba(a.id); setDataSelecionada(null); setMostrarForm(false) }} style={{
             padding: '8px 20px', border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 700, fontSize: 14,
-            background: aba === a ? AMARELO : 'transparent', color: aba === a ? '#000' : SUBTEXTO,
+            background: aba === a.id ? AMARELO : 'transparent', color: aba === a.id ? '#000' : SUBTEXTO,
           }}>
-            {a === 'pautas' ? '📋 Pautas' : '📝 Relatórios'}
+            {a.label}
           </button>
         ))}
       </div>
@@ -192,7 +250,7 @@ export default function Home() {
             }}>
               <span style={{ display: 'block', fontSize: 12, fontWeight: 700 }}>{formatarDataCurta(d)}</span>
               <span style={{ display: 'block', fontSize: 11, opacity: 0.7, marginTop: 2 }}>
-                {aba === 'pautas' ? porDataPautas[d]?.length : porDataRelatorios[d]?.length} {aba === 'pautas' ? 'pauta(s)' : 'relatório(s)'}
+                {aba === 'pautas' ? porDataPautas[d]?.length : aba === 'relatorios' ? porDataRelatorios[d]?.length : porDataPrevisoes[d]?.length} {aba === 'pautas' ? 'pauta(s)' : aba === 'relatorios' ? 'relatório(s)' : 'previsão(ões)'}
               </span>
             </button>
           ))}
@@ -211,7 +269,7 @@ export default function Home() {
           {mostrarForm && (
             <div style={{ background: CARD, border: `1px solid ${BORDA}`, borderRadius: 16, padding: '1.5rem', marginBottom: '1.5rem' }}>
               <h2 style={{ margin: '0 0 1rem', fontSize: 15, fontWeight: 700, color: AMARELO }}>
-                {(editandoPauta || editandoRel) ? '✏️ Editar' : `+ ${aba === 'pautas' ? 'Nova Pauta' : 'Novo Relatório'}`}
+                {(editandoPauta || editandoRel || editandoPrev) ? '✏️ Editar' : `+ ${aba === 'pautas' ? 'Nova Pauta' : aba === 'relatorios' ? 'Novo Relatório' : 'Nova Previsão'}`}
               </h2>
 
               {aba === 'pautas' && (
@@ -266,12 +324,29 @@ export default function Home() {
                 </>
               )}
 
+              {aba === 'previsoes' && (
+                <>
+                  <div style={{ marginBottom: 12 }}>
+                    <label style={{ fontSize: 11, color: SUBTEXTO, fontWeight: 700, textTransform: 'uppercase' }}>Data prevista</label>
+                    <input type="date" value={formPrev.data} onChange={e => setFormPrev({ ...formPrev, data: e.target.value })} style={{ ...inp, colorScheme: 'dark' }} />
+                  </div>
+                  <div style={{ marginBottom: 12 }}>
+                    <label style={{ fontSize: 11, color: SUBTEXTO, fontWeight: 700, textTransform: 'uppercase' }}>Título</label>
+                    <input type="text" placeholder="Nome da pauta prevista" value={formPrev.titulo} onChange={e => setFormPrev({ ...formPrev, titulo: e.target.value })} style={inp} />
+                  </div>
+                  <div style={{ marginBottom: 16 }}>
+                    <label style={{ fontSize: 11, color: SUBTEXTO, fontWeight: 700, textTransform: 'uppercase' }}>Descrição</label>
+                    <textarea placeholder="Detalhes sobre a previsão..." value={formPrev.descricao} onChange={e => setFormPrev({ ...formPrev, descricao: e.target.value })} rows={4} style={{ ...inp, resize: 'vertical', lineHeight: 1.6 }} />
+                  </div>
+                </>
+              )}
+
               <div style={{ display: 'flex', gap: 8 }}>
-                <button onClick={aba === 'pautas' ? salvarPauta : salvarRelatorio} disabled={uploadando} style={{
+                <button onClick={aba === 'pautas' ? salvarPauta : aba === 'relatorios' ? salvarRelatorio : salvarPrevisao} disabled={uploadando} style={{
                   background: AMARELO, color: '#000', border: 'none', borderRadius: 8,
                   padding: '10px 20px', cursor: 'pointer', fontWeight: 700, fontSize: 14
                 }}>
-                  {(editandoPauta || editandoRel) ? 'Salvar edição' : 'Adicionar'}
+                  {(editandoPauta || editandoRel || editandoPrev) ? 'Salvar edição' : 'Adicionar'}
                 </button>
                 <button onClick={cancelar} style={{ background: 'transparent', border: `1px solid ${BORDA}`, borderRadius: 8, padding: '10px 20px', cursor: 'pointer', color: SUBTEXTO, fontSize: 14 }}>
                   Cancelar
@@ -289,11 +364,16 @@ export default function Home() {
                   {formatarData(dataSelecionada)}
                 </h3>
               </div>
-              <button onClick={() => { setMostrarForm(true); if (aba === 'pautas') setFormPauta({ ...VAZIO_PAUTA, data: dataSelecionada }); else setFormRel({ ...VAZIO_RELATORIO, data: dataSelecionada }) }} style={{
+              <button onClick={() => {
+                setMostrarForm(true)
+                if (aba === 'pautas') setFormPauta({ ...VAZIO_PAUTA, data: dataSelecionada })
+                else if (aba === 'relatorios') setFormRel({ ...VAZIO_RELATORIO, data: dataSelecionada })
+                else setFormPrev({ ...VAZIO_PREVISAO, data: dataSelecionada })
+              }} style={{
                 background: AMARELO, color: '#000', border: 'none', borderRadius: 8,
                 padding: '8px 16px', cursor: 'pointer', fontWeight: 700, fontSize: 13
               }}>
-                + {aba === 'pautas' ? 'Nova pauta' : 'Novo relatório'}
+                + {aba === 'pautas' ? 'Nova pauta' : aba === 'relatorios' ? 'Novo relatório' : 'Nova previsão'}
               </button>
             </div>
           )}
@@ -302,6 +382,7 @@ export default function Home() {
           {dataSelecionada && !mostrarForm && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {itensDoDia.length === 0 && <p style={{ color: SUBTEXTO, fontSize: 14 }}>Nenhum registro para este dia.</p>}
+
               {aba === 'pautas' && itensDoDia.map(p => (
                 <div key={p.id} style={{ background: CARD, border: `1px solid ${BORDA}`, borderRadius: 12, padding: '1rem 1.2rem' }}
                   onMouseEnter={e => e.currentTarget.style.borderColor = AMARELO}
@@ -336,6 +417,7 @@ export default function Home() {
                   )}
                 </div>
               ))}
+
               {aba === 'relatorios' && itensDoDia.map(r => (
                 <div key={r.id} style={{ background: CARD, border: `1px solid ${BORDA}`, borderRadius: 12, padding: '1rem 1.2rem' }}
                   onMouseEnter={e => e.currentTarget.style.borderColor = AMARELO}
@@ -350,6 +432,33 @@ export default function Home() {
                   <p style={{ margin: '8px 0 0', fontSize: 14, color: '#ccc', whiteSpace: 'pre-wrap', lineHeight: 1.6 }}>{r.texto}</p>
                 </div>
               ))}
+
+              {aba === 'previsoes' && itensDoDia.map(p => (
+                <div key={p.id} style={{ background: CARD, border: `1px solid ${BORDA}`, borderRadius: 12, padding: '1rem 1.2rem' }}
+                  onMouseEnter={e => e.currentTarget.style.borderColor = AMARELO}
+                  onMouseLeave={e => e.currentTarget.style.borderColor = BORDA}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <p style={{ margin: 0, fontWeight: 700, fontSize: 15 }}>{p.titulo}</p>
+                    <div style={{ display: 'flex', gap: 12 }}>
+                      <button onClick={() => editarPrevisao(p)} style={{ background: 'none', border: 'none', color: AMARELO, cursor: 'pointer', fontSize: 13, fontWeight: 600 }}>Editar</button>
+                      <button onClick={() => deletarPrevisao(p.id)} style={{ background: 'none', border: 'none', color: '#ff4444', cursor: 'pointer', fontSize: 13, fontWeight: 600 }}>Deletar</button>
+                    </div>
+                  </div>
+                  {p.descricao && (
+                    <div style={{ marginTop: 8 }}>
+                      <button onClick={() => setExpandido(expandido === p.id ? null : p.id)}
+                        style={{ background: 'none', border: 'none', color: SUBTEXTO, cursor: 'pointer', fontSize: 12, padding: 0, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                        {expandido === p.id ? '▲ Ocultar' : '▼ Ver descrição'}
+                      </button>
+                      {expandido === p.id && (
+                        <p style={{ marginTop: 10, fontSize: 14, color: '#ccc', whiteSpace: 'pre-wrap', background: '#222', borderRadius: 8, padding: '12px 14px', lineHeight: 1.7, borderLeft: `3px solid ${AMARELO}` }}>
+                          {p.descricao}
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ))}
             </div>
           )}
 
@@ -357,7 +466,7 @@ export default function Home() {
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: 300, gap: 12 }}>
               <p style={{ color: SUBTEXTO, fontSize: 14 }}>Selecione uma data na lateral ou crie um novo registro.</p>
               <button onClick={() => setMostrarForm(true)} style={{ background: AMARELO, color: '#000', border: 'none', borderRadius: 8, padding: '10px 20px', cursor: 'pointer', fontWeight: 700, fontSize: 14 }}>
-                + {aba === 'pautas' ? 'Nova pauta' : 'Novo relatório'}
+                + {aba === 'pautas' ? 'Nova pauta' : aba === 'relatorios' ? 'Novo relatório' : 'Nova previsão'}
               </button>
             </div>
           )}
