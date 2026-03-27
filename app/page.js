@@ -30,6 +30,10 @@ function formatarDataCurta(data) {
   })
 }
 
+function limparTelefone(tel) {
+  return tel.replace(/\D/g, '')
+}
+
 function Highlight({ text, busca }) {
   if (!busca || !text) return <span>{text}</span>
   const parts = text.split(new RegExp(`(${busca})`, 'gi'))
@@ -112,6 +116,20 @@ export default function Home() {
     }, {})
   }
 
+  function enviarWhatsApp(pauta) {
+    const contato = contatos.find(c =>
+      c.nome.toLowerCase().includes(pauta.reporter.toLowerCase()) ||
+      pauta.reporter.toLowerCase().includes(c.nome.toLowerCase())
+    )
+    const tel = contato ? limparTelefone(contato.telefone) : ''
+    const dataFormatada = formatarData(pauta.data)
+    const msg = `📋 *PAUTA - CazéTV*\n📅 ${dataFormatada}\n👤 Repórter: ${pauta.reporter}\n\n*${pauta.titulo}*${pauta.conteudo ? '\n\n' + pauta.conteudo : ''}${pauta.pdfUrl ? '\n\n📄 PDF: ' + pauta.pdfUrl : ''}`
+    const url = tel
+      ? `https://wa.me/${tel}?text=${encodeURIComponent(msg)}`
+      : `https://wa.me/?text=${encodeURIComponent(msg)}`
+    window.open(url, '_blank')
+  }
+
   const porDataPautas = agruparPorData(pautas)
   const porDataRelatorios = agruparPorData(relatorios)
   const porDataPrevisoes = agruparPorData(previsoes)
@@ -129,7 +147,6 @@ export default function Home() {
     (c.cargo || '').toLowerCase().includes(busca.toLowerCase())
   )
 
-  // Busca geral
   const q = buscaGeral.toLowerCase()
   const pautasEncontradas = q ? pautas.filter(p =>
     (p.titulo || '').toLowerCase().includes(q) ||
@@ -283,6 +300,41 @@ export default function Home() {
   const secaoTitleStyle = { fontSize: 12, fontWeight: 700, color: SUBTEXTO, textTransform: 'uppercase', letterSpacing: 1 }
   const countStyle = { fontSize: 11, color: '#555', marginLeft: 4 }
 
+  function CardPauta({ p }) {
+    const contato = contatos.find(c =>
+      c.nome.toLowerCase().includes(p.reporter.toLowerCase()) ||
+      p.reporter.toLowerCase().includes(c.nome.toLowerCase())
+    )
+    return (
+      <div style={{ background: CARD, border: `1px solid ${BORDA}`, borderRadius: 12, padding: '1rem 1.2rem' }}
+        onMouseEnter={e => e.currentTarget.style.borderColor = AMARELO}
+        onMouseLeave={e => e.currentTarget.style.borderColor = BORDA}>
+        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+          <div>
+            <p style={{ margin: 0, fontWeight: 700, fontSize: 15 }}>{p.titulo}</p>
+            <p style={{ margin: '4px 0 0', fontSize: 13, color: SUBTEXTO }}>👤 {p.reporter}</p>
+          </div>
+          <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+            <button onClick={() => enviarWhatsApp(p)} style={{
+              background: '#25D366', color: '#fff', border: 'none', borderRadius: 8,
+              padding: '6px 12px', cursor: 'pointer', fontSize: 12, fontWeight: 700,
+              display: 'flex', alignItems: 'center', gap: 4
+            }}>
+              📲 {contato ? 'Enviar' : 'WhatsApp'}
+            </button>
+            <button onClick={() => editarPauta(p)} style={{ background: 'none', border: 'none', color: AMARELO, cursor: 'pointer', fontSize: 13, fontWeight: 600 }}>Editar</button>
+            <button onClick={() => deletarPauta(p.id)} style={{ background: 'none', border: 'none', color: '#ff4444', cursor: 'pointer', fontSize: 13, fontWeight: 600 }}>Deletar</button>
+          </div>
+        </div>
+        <div style={{ marginTop: 10, display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+          {p.conteudo && <button onClick={() => setExpandido(expandido === p.id ? null : p.id)} style={{ background: 'none', border: 'none', color: SUBTEXTO, cursor: 'pointer', fontSize: 12, padding: 0, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5 }}>{expandido === p.id ? '▲ Ocultar' : '▼ Ver pauta completa'}</button>}
+          {p.pdfUrl && <a href={p.pdfUrl} target="_blank" rel="noopener noreferrer" style={{ fontSize: 12, fontWeight: 600, color: AMARELO, textDecoration: 'none', textTransform: 'uppercase', letterSpacing: 0.5 }}>📄 Ver PDF</a>}
+        </div>
+        {expandido === p.id && p.conteudo && <p style={{ marginTop: 10, fontSize: 14, color: '#ccc', whiteSpace: 'pre-wrap', background: '#222', borderRadius: 8, padding: '12px 14px', lineHeight: 1.7, borderLeft: `3px solid ${AMARELO}` }}>{p.conteudo}</p>}
+      </div>
+    )
+  }
+
   return (
     <main style={{ minHeight: '100vh', background: ESCURO, color: TEXTO, fontFamily: "'Inter','Helvetica Neue',sans-serif", display: 'flex', flexDirection: 'column' }}>
 
@@ -302,7 +354,6 @@ export default function Home() {
 
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden', minHeight: 0 }}>
 
-        {/* Sidebar */}
         {aba !== 'contatos' && aba !== 'busca' && (
           <aside style={{ width: 200, flexShrink: 0, borderRight: `1px solid ${BORDA}`, padding: '12px 8px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 4 }}>
             <p style={{ fontSize: 10, color: SUBTEXTO, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, padding: '0 6px', marginBottom: 4 }}>Datas</p>
@@ -329,133 +380,78 @@ export default function Home() {
 
         <section style={{ flex: 1, overflowY: 'auto', padding: '1.5rem' }}>
 
-          {/* ---- ABA BUSCA ---- */}
           {aba === 'busca' && (
             <>
-              <input
-                type="text"
-                placeholder="🔍 Digite uma palavra para buscar em pautas, relatórios e previsões..."
-                value={buscaGeral}
-                onChange={e => setBuscaGeral(e.target.value)}
-                autoFocus
-                style={{ ...inp, marginTop: 0, marginBottom: '1.5rem', fontSize: 15 }}
-              />
-
-              {!buscaGeral && (
-                <p style={{ color: SUBTEXTO, fontSize: 14, textAlign: 'center', padding: '3rem 0' }}>Digite algo para começar a busca.</p>
-              )}
-
-              {buscaGeral && (
-                <>
-                  {/* Pautas */}
-                  <div style={secaoStyle}>
-                    <div style={secaoHeaderStyle}>
-                      <div style={barStyle} />
-                      <span style={secaoTitleStyle}>Pautas</span>
-                      <span style={countStyle}>{pautasEncontradas.length} resultado(s)</span>
-                    </div>
-                    {pautasEncontradas.length === 0 && <p style={{ color: SUBTEXTO, fontSize: 13 }}>Nenhuma pauta encontrada.</p>}
-                    {pautasEncontradas.map(p => (
-                      <div key={p.id} style={{ background: CARD, border: `1px solid ${BORDA}`, borderRadius: 12, padding: '1rem 1.2rem', marginBottom: 8 }}
-                        onMouseEnter={e => e.currentTarget.style.borderColor = AMARELO}
-                        onMouseLeave={e => e.currentTarget.style.borderColor = BORDA}>
-                        <p style={{ margin: 0, fontWeight: 700, fontSize: 14 }}><Highlight text={p.titulo} busca={buscaGeral} /></p>
-                        <p style={{ margin: '4px 0 0', fontSize: 12, color: SUBTEXTO }}>👤 <Highlight text={p.reporter} busca={buscaGeral} /> · 📅 {formatarDataCurta(p.data)}</p>
-                        {p.conteudo && (
-                          <p style={{ margin: '8px 0 0', fontSize: 13, color: '#aaa', lineHeight: 1.5 }}>
-                            <Highlight text={p.conteudo.slice(0, 150) + (p.conteudo.length > 150 ? '...' : '')} busca={buscaGeral} />
-                          </p>
-                        )}
+              <input type="text" placeholder="🔍 Digite uma palavra para buscar em pautas, relatórios e previsões..." value={buscaGeral} onChange={e => setBuscaGeral(e.target.value)} autoFocus style={{ ...inp, marginTop: 0, marginBottom: '1.5rem', fontSize: 15 }} />
+              {!buscaGeral && <p style={{ color: SUBTEXTO, fontSize: 14, textAlign: 'center', padding: '3rem 0' }}>Digite algo para começar a busca.</p>}
+              {buscaGeral && (<>
+                <div style={secaoStyle}>
+                  <div style={secaoHeaderStyle}><div style={barStyle} /><span style={secaoTitleStyle}>Pautas</span><span style={countStyle}>{pautasEncontradas.length} resultado(s)</span></div>
+                  {pautasEncontradas.length === 0 && <p style={{ color: SUBTEXTO, fontSize: 13 }}>Nenhuma pauta encontrada.</p>}
+                  {pautasEncontradas.map(p => (
+                    <div key={p.id} style={{ background: CARD, border: `1px solid ${BORDA}`, borderRadius: 12, padding: '1rem 1.2rem', marginBottom: 8 }}
+                      onMouseEnter={e => e.currentTarget.style.borderColor = AMARELO}
+                      onMouseLeave={e => e.currentTarget.style.borderColor = BORDA}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                        <div>
+                          <p style={{ margin: 0, fontWeight: 700, fontSize: 14 }}><Highlight text={p.titulo} busca={buscaGeral} /></p>
+                          <p style={{ margin: '4px 0 0', fontSize: 12, color: SUBTEXTO }}>👤 <Highlight text={p.reporter} busca={buscaGeral} /> · 📅 {formatarDataCurta(p.data)}</p>
+                          {p.conteudo && <p style={{ margin: '8px 0 0', fontSize: 13, color: '#aaa', lineHeight: 1.5 }}><Highlight text={p.conteudo.slice(0, 150) + (p.conteudo.length > 150 ? '...' : '')} busca={buscaGeral} /></p>}
+                        </div>
+                        <button onClick={() => enviarWhatsApp(p)} style={{ background: '#25D366', color: '#fff', border: 'none', borderRadius: 8, padding: '6px 12px', cursor: 'pointer', fontSize: 12, fontWeight: 700, marginLeft: 12, flexShrink: 0 }}>📲 Enviar</button>
                       </div>
-                    ))}
-                  </div>
-
-                  {/* Relatórios */}
-                  <div style={secaoStyle}>
-                    <div style={secaoHeaderStyle}>
-                      <div style={barStyle} />
-                      <span style={secaoTitleStyle}>Relatórios</span>
-                      <span style={countStyle}>{relatoriosEncontrados.length} resultado(s)</span>
                     </div>
-                    {relatoriosEncontrados.length === 0 && <p style={{ color: SUBTEXTO, fontSize: 13 }}>Nenhum relatório encontrado.</p>}
-                    {relatoriosEncontrados.map(r => (
-                      <div key={r.id} style={{ background: CARD, border: `1px solid ${BORDA}`, borderRadius: 12, padding: '1rem 1.2rem', marginBottom: 8 }}
-                        onMouseEnter={e => e.currentTarget.style.borderColor = AMARELO}
-                        onMouseLeave={e => e.currentTarget.style.borderColor = BORDA}>
-                        <p style={{ margin: 0, fontSize: 12, color: SUBTEXTO }}>👤 <Highlight text={r.reporter} busca={buscaGeral} /> · 📅 {formatarDataCurta(r.data)}</p>
-                        <p style={{ margin: '8px 0 0', fontSize: 13, color: '#aaa', lineHeight: 1.5 }}>
-                          <Highlight text={r.texto.slice(0, 150) + (r.texto.length > 150 ? '...' : '')} busca={buscaGeral} />
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* Previsões */}
-                  <div style={secaoStyle}>
-                    <div style={secaoHeaderStyle}>
-                      <div style={barStyle} />
-                      <span style={secaoTitleStyle}>Previsões</span>
-                      <span style={countStyle}>{previsoesEncontradas.length} resultado(s)</span>
+                  ))}
+                </div>
+                <div style={secaoStyle}>
+                  <div style={secaoHeaderStyle}><div style={barStyle} /><span style={secaoTitleStyle}>Relatórios</span><span style={countStyle}>{relatoriosEncontrados.length} resultado(s)</span></div>
+                  {relatoriosEncontrados.length === 0 && <p style={{ color: SUBTEXTO, fontSize: 13 }}>Nenhum relatório encontrado.</p>}
+                  {relatoriosEncontrados.map(r => (
+                    <div key={r.id} style={{ background: CARD, border: `1px solid ${BORDA}`, borderRadius: 12, padding: '1rem 1.2rem', marginBottom: 8 }}
+                      onMouseEnter={e => e.currentTarget.style.borderColor = AMARELO}
+                      onMouseLeave={e => e.currentTarget.style.borderColor = BORDA}>
+                      <p style={{ margin: 0, fontSize: 12, color: SUBTEXTO }}>👤 <Highlight text={r.reporter} busca={buscaGeral} /> · 📅 {formatarDataCurta(r.data)}</p>
+                      <p style={{ margin: '8px 0 0', fontSize: 13, color: '#aaa', lineHeight: 1.5 }}><Highlight text={r.texto.slice(0, 150) + (r.texto.length > 150 ? '...' : '')} busca={buscaGeral} /></p>
                     </div>
-                    {previsoesEncontradas.length === 0 && <p style={{ color: SUBTEXTO, fontSize: 13 }}>Nenhuma previsão encontrada.</p>}
-                    {previsoesEncontradas.map(p => (
-                      <div key={p.id} style={{ background: CARD, border: `1px solid ${BORDA}`, borderRadius: 12, padding: '1rem 1.2rem', marginBottom: 8 }}
-                        onMouseEnter={e => e.currentTarget.style.borderColor = AMARELO}
-                        onMouseLeave={e => e.currentTarget.style.borderColor = BORDA}>
-                        <p style={{ margin: 0, fontWeight: 700, fontSize: 14 }}><Highlight text={p.titulo} busca={buscaGeral} /></p>
-                        <p style={{ margin: '4px 0 0', fontSize: 12, color: SUBTEXTO }}>📅 {formatarDataCurta(p.data)}</p>
-                        {p.descricao && (
-                          <p style={{ margin: '8px 0 0', fontSize: 13, color: '#aaa', lineHeight: 1.5 }}>
-                            <Highlight text={p.descricao.slice(0, 150) + (p.descricao.length > 150 ? '...' : '')} busca={buscaGeral} />
-                          </p>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </>
-              )}
+                  ))}
+                </div>
+                <div style={secaoStyle}>
+                  <div style={secaoHeaderStyle}><div style={barStyle} /><span style={secaoTitleStyle}>Previsões</span><span style={countStyle}>{previsoesEncontradas.length} resultado(s)</span></div>
+                  {previsoesEncontradas.length === 0 && <p style={{ color: SUBTEXTO, fontSize: 13 }}>Nenhuma previsão encontrada.</p>}
+                  {previsoesEncontradas.map(p => (
+                    <div key={p.id} style={{ background: CARD, border: `1px solid ${BORDA}`, borderRadius: 12, padding: '1rem 1.2rem', marginBottom: 8 }}
+                      onMouseEnter={e => e.currentTarget.style.borderColor = AMARELO}
+                      onMouseLeave={e => e.currentTarget.style.borderColor = BORDA}>
+                      <p style={{ margin: 0, fontWeight: 700, fontSize: 14 }}><Highlight text={p.titulo} busca={buscaGeral} /></p>
+                      <p style={{ margin: '4px 0 0', fontSize: 12, color: SUBTEXTO }}>📅 {formatarDataCurta(p.data)}</p>
+                      {p.descricao && <p style={{ margin: '8px 0 0', fontSize: 13, color: '#aaa', lineHeight: 1.5 }}><Highlight text={p.descricao.slice(0, 150) + (p.descricao.length > 150 ? '...' : '')} busca={buscaGeral} /></p>}
+                    </div>
+                  ))}
+                </div>
+              </>)}
             </>
           )}
 
-          {/* ---- ABA CONTATOS ---- */}
           {aba === 'contatos' && (
             <>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 12 }}>
-                <input type="text" placeholder="🔍 Buscar por nome ou cargo..." value={busca} onChange={e => setBusca(e.target.value)}
-                  style={{ ...inp, marginTop: 0, flex: 1, minWidth: 200, maxWidth: 400 }} />
-                <button onClick={() => { setMostrarForm(true); setFormContato(VAZIO_CONTATO) }} style={{
-                  background: AMARELO, color: '#000', border: 'none', borderRadius: 8, padding: '10px 16px', cursor: 'pointer', fontWeight: 700, fontSize: 13
-                }}>+ Novo contato</button>
+                <input type="text" placeholder="🔍 Buscar por nome ou cargo..." value={busca} onChange={e => setBusca(e.target.value)} style={{ ...inp, marginTop: 0, flex: 1, minWidth: 200, maxWidth: 400 }} />
+                <button onClick={() => { setMostrarForm(true); setFormContato(VAZIO_CONTATO) }} style={{ background: AMARELO, color: '#000', border: 'none', borderRadius: 8, padding: '10px 16px', cursor: 'pointer', fontWeight: 700, fontSize: 13 }}>+ Novo contato</button>
               </div>
-
               {mostrarForm && (
                 <div style={{ background: CARD, border: `1px solid ${BORDA}`, borderRadius: 16, padding: '1.5rem', marginBottom: '1.5rem' }}>
-                  <h2 style={{ margin: '0 0 1rem', fontSize: 15, fontWeight: 700, color: AMARELO }}>
-                    {editandoContato ? '✏️ Editar contato' : '+ Novo contato'}
-                  </h2>
+                  <h2 style={{ margin: '0 0 1rem', fontSize: 15, fontWeight: 700, color: AMARELO }}>{editandoContato ? '✏️ Editar contato' : '+ Novo contato'}</h2>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
-                    <div>
-                      <label style={{ fontSize: 11, color: SUBTEXTO, fontWeight: 700, textTransform: 'uppercase' }}>Nome</label>
-                      <input type="text" placeholder="Nome completo" value={formContato.nome} onChange={e => setFormContato({ ...formContato, nome: e.target.value })} style={inp} />
-                    </div>
-                    <div>
-                      <label style={{ fontSize: 11, color: SUBTEXTO, fontWeight: 700, textTransform: 'uppercase' }}>Telefone</label>
-                      <input type="text" placeholder="(xx) xxxxx-xxxx" value={formContato.telefone} onChange={e => setFormContato({ ...formContato, telefone: e.target.value })} style={inp} />
-                    </div>
+                    <div><label style={{ fontSize: 11, color: SUBTEXTO, fontWeight: 700, textTransform: 'uppercase' }}>Nome</label><input type="text" placeholder="Nome completo" value={formContato.nome} onChange={e => setFormContato({ ...formContato, nome: e.target.value })} style={inp} /></div>
+                    <div><label style={{ fontSize: 11, color: SUBTEXTO, fontWeight: 700, textTransform: 'uppercase' }}>Telefone</label><input type="text" placeholder="(xx) xxxxx-xxxx" value={formContato.telefone} onChange={e => setFormContato({ ...formContato, telefone: e.target.value })} style={inp} /></div>
                   </div>
-                  <div style={{ marginBottom: 16 }}>
-                    <label style={{ fontSize: 11, color: SUBTEXTO, fontWeight: 700, textTransform: 'uppercase' }}>Cargo / Função</label>
-                    <input type="text" placeholder="Ex: Repórter, Editor, Cinegrafista..." value={formContato.cargo} onChange={e => setFormContato({ ...formContato, cargo: e.target.value })} style={inp} />
-                  </div>
+                  <div style={{ marginBottom: 16 }}><label style={{ fontSize: 11, color: SUBTEXTO, fontWeight: 700, textTransform: 'uppercase' }}>Cargo / Função</label><input type="text" placeholder="Ex: Repórter, Editor..." value={formContato.cargo} onChange={e => setFormContato({ ...formContato, cargo: e.target.value })} style={inp} /></div>
                   <div style={{ display: 'flex', gap: 8 }}>
-                    <button onClick={salvarContato} style={{ background: AMARELO, color: '#000', border: 'none', borderRadius: 8, padding: '10px 20px', cursor: 'pointer', fontWeight: 700, fontSize: 14 }}>
-                      {editandoContato ? 'Salvar edição' : 'Adicionar'}
-                    </button>
+                    <button onClick={salvarContato} style={{ background: AMARELO, color: '#000', border: 'none', borderRadius: 8, padding: '10px 20px', cursor: 'pointer', fontWeight: 700, fontSize: 14 }}>{editandoContato ? 'Salvar edição' : 'Adicionar'}</button>
                     <button onClick={cancelar} style={{ background: 'transparent', border: `1px solid ${BORDA}`, borderRadius: 8, padding: '10px 20px', cursor: 'pointer', color: SUBTEXTO, fontSize: 14 }}>Cancelar</button>
                   </div>
                 </div>
               )}
-
               <p style={{ fontSize: 12, color: SUBTEXTO, marginBottom: 12 }}>{contatosFiltrados.length} contato(s)</p>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 10 }}>
                 {contatosFiltrados.map(c => (
@@ -479,7 +475,6 @@ export default function Home() {
             </>
           )}
 
-          {/* Formulário pautas/relatórios/previsões */}
           {aba !== 'contatos' && aba !== 'busca' && mostrarForm && (
             <div style={{ background: CARD, border: `1px solid ${BORDA}`, borderRadius: 16, padding: '1.5rem', marginBottom: '1.5rem' }}>
               <h2 style={{ margin: '0 0 1rem', fontSize: 15, fontWeight: 700, color: AMARELO }}>
@@ -544,24 +539,7 @@ export default function Home() {
           {aba !== 'contatos' && aba !== 'busca' && dataSelecionada && !mostrarForm && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {itensDoDia.length === 0 && <p style={{ color: SUBTEXTO, fontSize: 14 }}>Nenhum registro para este dia.</p>}
-              {aba === 'pautas' && itensDoDia.map(p => (
-                <div key={p.id} style={{ background: CARD, border: `1px solid ${BORDA}`, borderRadius: 12, padding: '1rem 1.2rem' }}
-                  onMouseEnter={e => e.currentTarget.style.borderColor = AMARELO}
-                  onMouseLeave={e => e.currentTarget.style.borderColor = BORDA}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <div><p style={{ margin: 0, fontWeight: 700, fontSize: 15 }}>{p.titulo}</p><p style={{ margin: '4px 0 0', fontSize: 13, color: SUBTEXTO }}>👤 {p.reporter}</p></div>
-                    <div style={{ display: 'flex', gap: 12 }}>
-                      <button onClick={() => editarPauta(p)} style={{ background: 'none', border: 'none', color: AMARELO, cursor: 'pointer', fontSize: 13, fontWeight: 600 }}>Editar</button>
-                      <button onClick={() => deletarPauta(p.id)} style={{ background: 'none', border: 'none', color: '#ff4444', cursor: 'pointer', fontSize: 13, fontWeight: 600 }}>Deletar</button>
-                    </div>
-                  </div>
-                  <div style={{ marginTop: 10, display: 'flex', gap: 16, flexWrap: 'wrap' }}>
-                    {p.conteudo && <button onClick={() => setExpandido(expandido === p.id ? null : p.id)} style={{ background: 'none', border: 'none', color: SUBTEXTO, cursor: 'pointer', fontSize: 12, padding: 0, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5 }}>{expandido === p.id ? '▲ Ocultar' : '▼ Ver pauta completa'}</button>}
-                    {p.pdfUrl && <a href={p.pdfUrl} target="_blank" rel="noopener noreferrer" style={{ fontSize: 12, fontWeight: 600, color: AMARELO, textDecoration: 'none', textTransform: 'uppercase', letterSpacing: 0.5 }}>📄 Ver PDF</a>}
-                  </div>
-                  {expandido === p.id && p.conteudo && <p style={{ marginTop: 10, fontSize: 14, color: '#ccc', whiteSpace: 'pre-wrap', background: '#222', borderRadius: 8, padding: '12px 14px', lineHeight: 1.7, borderLeft: `3px solid ${AMARELO}` }}>{p.conteudo}</p>}
-                </div>
-              ))}
+              {aba === 'pautas' && itensDoDia.map(p => <CardPauta key={p.id} p={p} />)}
               {aba === 'relatorios' && itensDoDia.map(r => (
                 <div key={r.id} style={{ background: CARD, border: `1px solid ${BORDA}`, borderRadius: 12, padding: '1rem 1.2rem' }}
                   onMouseEnter={e => e.currentTarget.style.borderColor = AMARELO}
