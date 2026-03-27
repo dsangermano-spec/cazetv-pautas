@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 const VAZIO_PAUTA = { data: '', reporter: '', titulo: '', conteudo: '', pdfUrl: '' }
 const VAZIO_RELATORIO = { data: '', reporter: '', texto: '' }
 const VAZIO_PREVISAO = { data: '', titulo: '', descricao: '' }
+const VAZIO_CONTATO = { nome: '', telefone: '', cargo: '' }
 const AMARELO = '#FFD600'
 const ESCURO = '#111111'
 const CARD = '#1A1A1A'
@@ -34,11 +35,15 @@ export default function Home() {
   const [pautas, setPautas] = useState([])
   const [relatorios, setRelatorios] = useState([])
   const [previsoes, setPrevisoes] = useState([])
+  const [contatos, setContatos] = useState([])
+  const [busca, setBusca] = useState('')
   const [dataSelecionada, setDataSelecionada] = useState(null)
   const [expandido, setExpandido] = useState(null)
   const [uploadando, setUploadando] = useState(false)
   const [loading, setLoading] = useState(true)
   const [mostrarForm, setMostrarForm] = useState(false)
+  const [editandoContato, setEditandoContato] = useState(null)
+  const [formContato, setFormContato] = useState(VAZIO_CONTATO)
 
   const [formPauta, setFormPauta] = useState(VAZIO_PAUTA)
   const [editandoPauta, setEditandoPauta] = useState(null)
@@ -51,17 +56,16 @@ export default function Home() {
 
   async function carregarTudo() {
     setLoading(true)
-    const [rP, rR, rPrev] = await Promise.all([
+    const [rP, rR, rPrev, rC] = await Promise.all([
       fetch('/api/pautas').then(r => r.json()),
       fetch('/api/relatorios').then(r => r.json()),
       fetch('/api/previsoes').then(r => r.json()),
+      fetch('/api/contatos').then(r => r.json()),
     ])
-    const sortedP = rP.sort((a, b) => a.data.localeCompare(b.data))
-    const sortedR = rR.sort((a, b) => a.data.localeCompare(b.data))
-    const sortedPrev = rPrev.sort((a, b) => a.data.localeCompare(b.data))
-    setPautas(sortedP)
-    setRelatorios(sortedR)
-    setPrevisoes(sortedPrev)
+    setPautas(rP.sort((a, b) => a.data.localeCompare(b.data)))
+    setRelatorios(rR.sort((a, b) => a.data.localeCompare(b.data)))
+    setPrevisoes(rPrev.sort((a, b) => a.data.localeCompare(b.data)))
+    setContatos(rC.sort((a, b) => a.nome.localeCompare(b.nome)))
     setLoading(false)
   }
 
@@ -83,6 +87,12 @@ export default function Home() {
     setPrevisoes(data.sort((a, b) => a.data.localeCompare(b.data)))
   }
 
+  async function carregarContatos() {
+    const res = await fetch('/api/contatos')
+    const data = await res.json()
+    setContatos(data.sort((a, b) => a.nome.localeCompare(b.nome)))
+  }
+
   function agruparPorData(lista) {
     return lista.reduce((acc, p) => {
       acc[p.data] = acc[p.data] || []
@@ -102,6 +112,11 @@ export default function Home() {
   const itensDoDia = aba === 'pautas' ? (porDataPautas[dataSelecionada] || [])
     : aba === 'relatorios' ? (porDataRelatorios[dataSelecionada] || [])
     : (porDataPrevisoes[dataSelecionada] || [])
+
+  const contatosFiltrados = contatos.filter(c =>
+    c.nome.toLowerCase().includes(busca.toLowerCase()) ||
+    (c.cargo || '').toLowerCase().includes(busca.toLowerCase())
+  )
 
   async function handlePdf(e) {
     const file = e.target.files[0]
@@ -196,13 +211,40 @@ export default function Home() {
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
+  async function salvarContato() {
+    if (!formContato.nome || !formContato.telefone) return alert('Preencha nome e telefone.')
+    if (editandoContato) {
+      await fetch('/api/contatos', { method: 'PUT', body: JSON.stringify({ ...formContato, id: editandoContato }) })
+      setEditandoContato(null)
+    } else {
+      await fetch('/api/contatos', { method: 'POST', body: JSON.stringify(formContato) })
+    }
+    setFormContato(VAZIO_CONTATO)
+    setMostrarForm(false)
+    carregarContatos()
+  }
+
+  async function deletarContato(id) {
+    if (!confirm('Deletar este contato?')) return
+    await fetch('/api/contatos', { method: 'DELETE', body: JSON.stringify({ id }) })
+    carregarContatos()
+  }
+
+  function editarContato(c) {
+    setFormContato({ nome: c.nome, telefone: c.telefone, cargo: c.cargo || '' })
+    setEditandoContato(c.id)
+    setMostrarForm(true)
+  }
+
   function cancelar() {
     setFormPauta(VAZIO_PAUTA)
     setFormRel(VAZIO_RELATORIO)
     setFormPrev(VAZIO_PREVISAO)
+    setFormContato(VAZIO_CONTATO)
     setEditandoPauta(null)
     setEditandoRel(null)
     setEditandoPrev(null)
+    setEditandoContato(null)
     setMostrarForm(false)
   }
 
@@ -210,21 +252,20 @@ export default function Home() {
     { id: 'pautas', label: '📋 Pautas' },
     { id: 'relatorios', label: '📝 Relatórios' },
     { id: 'previsoes', label: '🔭 Previsões' },
+    { id: 'contatos', label: '📞 Contatos' },
   ]
 
   return (
     <main style={{ minHeight: '100vh', background: ESCURO, color: TEXTO, fontFamily: "'Inter','Helvetica Neue',sans-serif", display: 'flex', flexDirection: 'column' }}>
 
-      {/* Header */}
       <header style={{ background: '#000', borderBottom: `3px solid ${AMARELO}`, padding: '1rem 1.5rem', display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
         <span style={{ background: AMARELO, color: '#000', fontWeight: 900, fontSize: 18, padding: '4px 10px', borderRadius: 6 }}>CAZÉ</span>
         <span style={{ fontWeight: 700, fontSize: 18 }}>PAUTAS & RELATÓRIOS</span>
       </header>
 
-      {/* Abas */}
-      <div style={{ display: 'flex', gap: 4, padding: '8px 12px', background: CARD, borderBottom: `1px solid ${BORDA}`, flexShrink: 0 }}>
+      <div style={{ display: 'flex', gap: 4, padding: '8px 12px', background: CARD, borderBottom: `1px solid ${BORDA}`, flexShrink: 0, flexWrap: 'wrap' }}>
         {abas.map(a => (
-          <button key={a.id} onClick={() => { setAba(a.id); setDataSelecionada(null); setMostrarForm(false) }} style={{
+          <button key={a.id} onClick={() => { setAba(a.id); setDataSelecionada(null); setMostrarForm(false); setBusca('') }} style={{
             padding: '8px 20px', border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 700, fontSize: 14,
             background: aba === a.id ? AMARELO : 'transparent', color: aba === a.id ? '#000' : SUBTEXTO,
           }}>
@@ -233,40 +274,109 @@ export default function Home() {
         ))}
       </div>
 
-      {/* Layout principal */}
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden', minHeight: 0 }}>
 
-        {/* Sidebar */}
-        <aside style={{ width: 200, flexShrink: 0, borderRight: `1px solid ${BORDA}`, padding: '12px 8px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 4 }}>
-          <p style={{ fontSize: 10, color: SUBTEXTO, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, padding: '0 6px', marginBottom: 4 }}>Datas</p>
-          {loading && <p style={{ fontSize: 12, color: SUBTEXTO, padding: '0 6px' }}>Carregando...</p>}
-          {!loading && datas.length === 0 && <p style={{ fontSize: 12, color: SUBTEXTO, padding: '0 6px' }}>Nenhum registro.</p>}
-          {datas.map(d => (
-            <button key={d} onClick={() => { setDataSelecionada(d); setMostrarForm(false) }} style={{
-              width: '100%', textAlign: 'left', border: 'none', borderRadius: 8, padding: '8px 10px', cursor: 'pointer',
-              background: dataSelecionada === d ? AMARELO : CARD,
-              color: dataSelecionada === d ? '#000' : TEXTO,
-              outline: dataSelecionada === d ? 'none' : `1px solid ${BORDA}`,
-            }}>
-              <span style={{ display: 'block', fontSize: 12, fontWeight: 700 }}>{formatarDataCurta(d)}</span>
-              <span style={{ display: 'block', fontSize: 11, opacity: 0.7, marginTop: 2 }}>
-                {aba === 'pautas' ? porDataPautas[d]?.length : aba === 'relatorios' ? porDataRelatorios[d]?.length : porDataPrevisoes[d]?.length} {aba === 'pautas' ? 'pauta(s)' : aba === 'relatorios' ? 'relatório(s)' : 'previsão(ões)'}
-              </span>
-            </button>
-          ))}
-          <button onClick={() => { setMostrarForm(true); setDataSelecionada(null); cancelar() }} style={{
-            marginTop: 8, width: '100%', padding: '8px 0', background: 'transparent',
-            border: `1px dashed ${BORDA}`, borderRadius: 8, color: SUBTEXTO, fontSize: 12, cursor: 'pointer'
-          }}>
-            + nova data
-          </button>
-        </aside>
+        {/* Sidebar — só para pautas, relatórios e previsões */}
+        {aba !== 'contatos' && (
+          <aside style={{ width: 200, flexShrink: 0, borderRight: `1px solid ${BORDA}`, padding: '12px 8px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 4 }}>
+            <p style={{ fontSize: 10, color: SUBTEXTO, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, padding: '0 6px', marginBottom: 4 }}>Datas</p>
+            {loading && <p style={{ fontSize: 12, color: SUBTEXTO, padding: '0 6px' }}>Carregando...</p>}
+            {!loading && datas.length === 0 && <p style={{ fontSize: 12, color: SUBTEXTO, padding: '0 6px' }}>Nenhum registro.</p>}
+            {datas.map(d => (
+              <button key={d} onClick={() => { setDataSelecionada(d); setMostrarForm(false) }} style={{
+                width: '100%', textAlign: 'left', border: 'none', borderRadius: 8, padding: '8px 10px', cursor: 'pointer',
+                background: dataSelecionada === d ? AMARELO : CARD,
+                color: dataSelecionada === d ? '#000' : TEXTO,
+                outline: dataSelecionada === d ? 'none' : `1px solid ${BORDA}`,
+              }}>
+                <span style={{ display: 'block', fontSize: 12, fontWeight: 700 }}>{formatarDataCurta(d)}</span>
+                <span style={{ display: 'block', fontSize: 11, opacity: 0.7, marginTop: 2 }}>
+                  {aba === 'pautas' ? porDataPautas[d]?.length : aba === 'relatorios' ? porDataRelatorios[d]?.length : porDataPrevisoes[d]?.length} {aba === 'pautas' ? 'pauta(s)' : aba === 'relatorios' ? 'relatório(s)' : 'previsão(ões)'}
+                </span>
+              </button>
+            ))}
+            <button onClick={() => { setMostrarForm(true); setDataSelecionada(null); cancelar() }} style={{
+              marginTop: 8, width: '100%', padding: '8px 0', background: 'transparent',
+              border: `1px dashed ${BORDA}`, borderRadius: 8, color: SUBTEXTO, fontSize: 12, cursor: 'pointer'
+            }}>+ nova data</button>
+          </aside>
+        )}
 
-        {/* Conteúdo */}
         <section style={{ flex: 1, overflowY: 'auto', padding: '1.5rem' }}>
 
-          {/* Formulário */}
-          {mostrarForm && (
+          {/* ---- ABA CONTATOS ---- */}
+          {aba === 'contatos' && (
+            <>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 12 }}>
+                <input
+                  type="text"
+                  placeholder="🔍 Buscar por nome ou cargo..."
+                  value={busca}
+                  onChange={e => setBusca(e.target.value)}
+                  style={{ ...inp, marginTop: 0, flex: 1, minWidth: 200, maxWidth: 400 }}
+                />
+                <button onClick={() => { setMostrarForm(true); setFormContato(VAZIO_CONTATO) }} style={{
+                  background: AMARELO, color: '#000', border: 'none', borderRadius: 8,
+                  padding: '10px 16px', cursor: 'pointer', fontWeight: 700, fontSize: 13
+                }}>+ Novo contato</button>
+              </div>
+
+              {mostrarForm && (
+                <div style={{ background: CARD, border: `1px solid ${BORDA}`, borderRadius: 16, padding: '1.5rem', marginBottom: '1.5rem' }}>
+                  <h2 style={{ margin: '0 0 1rem', fontSize: 15, fontWeight: 700, color: AMARELO }}>
+                    {editandoContato ? '✏️ Editar contato' : '+ Novo contato'}
+                  </h2>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+                    <div>
+                      <label style={{ fontSize: 11, color: SUBTEXTO, fontWeight: 700, textTransform: 'uppercase' }}>Nome</label>
+                      <input type="text" placeholder="Nome completo" value={formContato.nome} onChange={e => setFormContato({ ...formContato, nome: e.target.value })} style={inp} />
+                    </div>
+                    <div>
+                      <label style={{ fontSize: 11, color: SUBTEXTO, fontWeight: 700, textTransform: 'uppercase' }}>Telefone</label>
+                      <input type="text" placeholder="(xx) xxxxx-xxxx" value={formContato.telefone} onChange={e => setFormContato({ ...formContato, telefone: e.target.value })} style={inp} />
+                    </div>
+                  </div>
+                  <div style={{ marginBottom: 16 }}>
+                    <label style={{ fontSize: 11, color: SUBTEXTO, fontWeight: 700, textTransform: 'uppercase' }}>Cargo / Função</label>
+                    <input type="text" placeholder="Ex: Repórter, Editor, Cinegrafista..." value={formContato.cargo} onChange={e => setFormContato({ ...formContato, cargo: e.target.value })} style={inp} />
+                  </div>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button onClick={salvarContato} style={{ background: AMARELO, color: '#000', border: 'none', borderRadius: 8, padding: '10px 20px', cursor: 'pointer', fontWeight: 700, fontSize: 14 }}>
+                      {editandoContato ? 'Salvar edição' : 'Adicionar'}
+                    </button>
+                    <button onClick={cancelar} style={{ background: 'transparent', border: `1px solid ${BORDA}`, borderRadius: 8, padding: '10px 20px', cursor: 'pointer', color: SUBTEXTO, fontSize: 14 }}>
+                      Cancelar
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              <p style={{ fontSize: 12, color: SUBTEXTO, marginBottom: 12 }}>{contatosFiltrados.length} contato(s)</p>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 10 }}>
+                {contatosFiltrados.map(c => (
+                  <div key={c.id} style={{ background: CARD, border: `1px solid ${BORDA}`, borderRadius: 12, padding: '1rem 1.2rem' }}
+                    onMouseEnter={e => e.currentTarget.style.borderColor = AMARELO}
+                    onMouseLeave={e => e.currentTarget.style.borderColor = BORDA}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                      <div>
+                        <p style={{ margin: 0, fontWeight: 700, fontSize: 14 }}>{c.nome}</p>
+                        {c.cargo && <p style={{ margin: '3px 0 0', fontSize: 12, color: SUBTEXTO }}>{c.cargo}</p>}
+                        <p style={{ margin: '6px 0 0', fontSize: 13, color: AMARELO, fontWeight: 600 }}>{c.telefone}</p>
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginLeft: 8 }}>
+                        <button onClick={() => editarContato(c)} style={{ background: 'none', border: 'none', color: AMARELO, cursor: 'pointer', fontSize: 12, fontWeight: 600 }}>Editar</button>
+                        <button onClick={() => deletarContato(c.id)} style={{ background: 'none', border: 'none', color: '#ff4444', cursor: 'pointer', fontSize: 12, fontWeight: 600 }}>Deletar</button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+
+          {/* Formulário pautas/relatórios/previsões */}
+          {aba !== 'contatos' && mostrarForm && (
             <div style={{ background: CARD, border: `1px solid ${BORDA}`, borderRadius: 16, padding: '1.5rem', marginBottom: '1.5rem' }}>
               <h2 style={{ margin: '0 0 1rem', fontSize: 15, fontWeight: 700, color: AMARELO }}>
                 {(editandoPauta || editandoRel || editandoPrev) ? '✏️ Editar' : `+ ${aba === 'pautas' ? 'Nova Pauta' : aba === 'relatorios' ? 'Novo Relatório' : 'Nova Previsão'}`}
@@ -355,8 +465,7 @@ export default function Home() {
             </div>
           )}
 
-          {/* Cabeçalho do dia */}
-          {dataSelecionada && !mostrarForm && (
+          {aba !== 'contatos' && dataSelecionada && !mostrarForm && (
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                 <div style={{ width: 4, height: 20, background: AMARELO, borderRadius: 2 }} />
@@ -378,8 +487,7 @@ export default function Home() {
             </div>
           )}
 
-          {/* Cards do dia */}
-          {dataSelecionada && !mostrarForm && (
+          {aba !== 'contatos' && dataSelecionada && !mostrarForm && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {itensDoDia.length === 0 && <p style={{ color: SUBTEXTO, fontSize: 14 }}>Nenhum registro para este dia.</p>}
 
@@ -462,7 +570,7 @@ export default function Home() {
             </div>
           )}
 
-          {!dataSelecionada && !mostrarForm && (
+          {aba !== 'contatos' && !dataSelecionada && !mostrarForm && (
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: 300, gap: 12 }}>
               <p style={{ color: SUBTEXTO, fontSize: 14 }}>Selecione uma data na lateral ou crie um novo registro.</p>
               <button onClick={() => setMostrarForm(true)} style={{ background: AMARELO, color: '#000', border: 'none', borderRadius: 8, padding: '10px 20px', cursor: 'pointer', fontWeight: 700, fontSize: 14 }}>
