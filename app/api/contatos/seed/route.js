@@ -247,6 +247,11 @@ const contatos = [
 ]
 
 export async function GET() {
+  // Verifica se já existem contatos antes de importar
+  const existentes = await redis.get('contatos')
+  if (existentes && Array.isArray(existentes) && existentes.length > 0) {
+    return NextResponse.json({ ok: false, mensagem: 'Contatos já importados. Use force=true para reimportar.', total: existentes.length })
+  }
   await redis.set('contatos', contatos)
   return NextResponse.json({ ok: true, total: contatos.length })
 }
