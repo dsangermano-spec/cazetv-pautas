@@ -50,12 +50,7 @@ function Calendario({ pautas, relatorios, previsoes, onDiaClick }) {
 
   function getDia(d) {
     const str = `${ano}-${String(mes+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`
-    return {
-      str,
-      pautas: pautas.filter(p => p.data === str),
-      relatorios: relatorios.filter(r => r.data === str),
-      previsoes: previsoes.filter(p => p.data === str),
-    }
+    return { str, pautas: pautas.filter(p => p.data === str), relatorios: relatorios.filter(r => r.data === str), previsoes: previsoes.filter(p => p.data === str) }
   }
 
   function navMes(dir) {
@@ -90,7 +85,6 @@ function Calendario({ pautas, relatorios, previsoes, onDiaClick }) {
             <div key={i} onClick={() => total > 0 && onDiaClick(info)} style={{
               background: CARD, border: `1px solid ${isHoje ? AMARELO : BORDA}`,
               borderRadius: 8, padding: '6px', minHeight: 72, cursor: total > 0 ? 'pointer' : 'default',
-              transition: 'border-color 0.2s',
             }}
               onMouseEnter={e => { if (total > 0) e.currentTarget.style.borderColor = AMARELO }}
               onMouseLeave={e => { if (!isHoje) e.currentTarget.style.borderColor = BORDA }}>
@@ -267,7 +261,7 @@ export default function Home() {
     <main style={{ minHeight: '100vh', background: ESCURO, color: TEXTO, fontFamily: "'Inter','Helvetica Neue',sans-serif", display: 'flex', flexDirection: 'column' }}>
 
       <header style={{ background: '#000', borderBottom: `3px solid ${AMARELO}`, padding: '1rem 1.5rem', display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
-        <span style={{ background: AMARELO, color: '#000', fontWeight: 900, fontSize: 18, padding: '4px 10px', borderRadius: 6 }}>CAZÉ</span>
+        <span style={{ background: AMARELO, color: '#000', fontWeight: 900, fontSize: 18, padding: '4px 10px', borderRadius: 6 }}>CazéTV</span>
         <span style={{ fontWeight: 700, fontSize: 18 }}>PAUTAS & RELATÓRIOS</span>
       </header>
 
@@ -283,29 +277,31 @@ export default function Home() {
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden', minHeight: 0 }}>
 
         {aba !== 'contatos' && aba !== 'busca' && aba !== 'calendario' && (
-          <aside style={{ width: 200, flexShrink: 0, borderRight: `1px solid ${BORDA}`, padding: '12px 8px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 4 }}>
+          <aside style={{ width: '35%', flexShrink: 0, borderRight: `1px solid ${BORDA}`, padding: '12px 8px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 4 }}>
             <p style={{ fontSize: 10, color: SUBTEXTO, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, padding: '0 6px', marginBottom: 4 }}>Datas</p>
             {loading && <p style={{ fontSize: 12, color: SUBTEXTO, padding: '0 6px' }}>Carregando...</p>}
             {!loading && datas.length === 0 && <p style={{ fontSize: 12, color: SUBTEXTO, padding: '0 6px' }}>Nenhum registro.</p>}
             {datas.map(d => (
               <button key={d} onClick={() => { setDataSelecionada(d); setMostrarForm(false) }} style={{
-                width: '100%', textAlign: 'left', border: 'none', borderRadius: 8, padding: '8px 10px', cursor: 'pointer',
+                width: '100%', textAlign: 'left', border: 'none', borderRadius: 8, padding: '10px 12px', cursor: 'pointer',
                 background: dataSelecionada === d ? AMARELO : CARD, color: dataSelecionada === d ? '#000' : TEXTO,
                 outline: dataSelecionada === d ? 'none' : `1px solid ${BORDA}`,
               }}>
-                <span style={{ display: 'block', fontSize: 12, fontWeight: 700 }}>{formatarDataCurta(d)}</span>
+                <span style={{ display: 'block', fontSize: 13, fontWeight: 700 }}>{formatarDataCurta(d)}</span>
                 <span style={{ display: 'block', fontSize: 11, opacity: 0.7, marginTop: 2 }}>
                   {aba === 'pautas' ? porDataPautas[d]?.length : aba === 'relatorios' ? porDataRelatorios[d]?.length : porDataPrevisoes[d]?.length} {aba === 'pautas' ? 'pauta(s)' : aba === 'relatorios' ? 'relatório(s)' : 'previsão(ões)'}
                 </span>
               </button>
             ))}
-            <button onClick={() => { setMostrarForm(true); setDataSelecionada(null); cancelar() }} style={{ marginTop: 8, width: '100%', padding: '8px 0', background: 'transparent', border: `1px dashed ${BORDA}`, borderRadius: 8, color: SUBTEXTO, fontSize: 12, cursor: 'pointer' }}>+ nova data</button>
+            <button onClick={() => { setMostrarForm(true); setDataSelecionada(null); cancelar() }} style={{
+              marginTop: 8, width: '100%', padding: '6px 0', background: 'transparent',
+              border: `1px dashed ${BORDA}`, borderRadius: 8, color: '#444', fontSize: 11, cursor: 'pointer'
+            }}>+ nova data</button>
           </aside>
         )}
 
         <section style={{ flex: 1, overflowY: 'auto', padding: '1.5rem' }}>
 
-          {/* CALENDÁRIO */}
           {aba === 'calendario' && (
             <>
               <Calendario pautas={pautas} relatorios={relatorios} previsoes={previsoes} onDiaClick={setDiaModal} />
@@ -314,8 +310,6 @@ export default function Home() {
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}><div style={{ width: 12, height: 12, background: '#2A2A2A', border: '0.5px solid #444', borderRadius: 3 }} /><span style={{ fontSize: 12, color: SUBTEXTO }}>Relatórios</span></div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}><div style={{ width: 12, height: 12, background: '#1a1a2e', border: '0.5px solid #333366', borderRadius: 3 }} /><span style={{ fontSize: 12, color: SUBTEXTO }}>Previsões</span></div>
               </div>
-
-              {/* Modal do dia */}
               {diaModal && (
                 <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }} onClick={() => setDiaModal(null)}>
                   <div style={{ background: '#1A1A1A', border: `1px solid ${BORDA}`, borderRadius: 16, padding: '1.5rem', maxWidth: 500, width: '90%', maxHeight: '80vh', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
@@ -361,13 +355,13 @@ export default function Home() {
             </>
           )}
 
-          {/* BUSCA */}
           {aba === 'busca' && (
             <>
               <input type="text" placeholder="🔍 Digite uma palavra para buscar em pautas, relatórios e previsões..." value={buscaGeral} onChange={e => setBuscaGeral(e.target.value)} autoFocus style={{ ...inp, marginTop: 0, marginBottom: '1.5rem', fontSize: 15 }} />
               {!buscaGeral && <p style={{ color: SUBTEXTO, fontSize: 14, textAlign: 'center', padding: '3rem 0' }}>Digite algo para começar a busca.</p>}
               {buscaGeral && (<>
-                {[{ label: 'Pautas', items: pautasEncontradas, render: p => <><p style={{ margin:0, fontWeight:700, fontSize:14 }}><Highlight text={p.titulo} busca={buscaGeral}/></p><p style={{ margin:'4px 0 0', fontSize:12, color:SUBTEXTO }}>👤 <Highlight text={p.reporter} busca={buscaGeral}/> · 📅 {formatarDataCurta(p.data)}</p>{p.conteudo && <p style={{ margin:'8px 0 0', fontSize:13, color:'#aaa', lineHeight:1.5 }}><Highlight text={p.conteudo.slice(0,150)+(p.conteudo.length>150?'..':'')} busca={buscaGeral}/></p>}</> },
+                {[
+                  { label: 'Pautas', items: pautasEncontradas, render: p => <><p style={{ margin:0, fontWeight:700, fontSize:14 }}><Highlight text={p.titulo} busca={buscaGeral}/></p><p style={{ margin:'4px 0 0', fontSize:12, color:SUBTEXTO }}>👤 <Highlight text={p.reporter} busca={buscaGeral}/> · 📅 {formatarDataCurta(p.data)}</p>{p.conteudo && <p style={{ margin:'8px 0 0', fontSize:13, color:'#aaa', lineHeight:1.5 }}><Highlight text={p.conteudo.slice(0,150)+(p.conteudo.length>150?'..':'')} busca={buscaGeral}/></p>}</> },
                   { label: 'Relatórios', items: relatoriosEncontrados, render: r => <><p style={{ margin:0, fontSize:12, color:SUBTEXTO }}>👤 <Highlight text={r.reporter} busca={buscaGeral}/> · 📅 {formatarDataCurta(r.data)}</p><p style={{ margin:'8px 0 0', fontSize:13, color:'#aaa', lineHeight:1.5 }}><Highlight text={r.texto.slice(0,150)+(r.texto.length>150?'..':'')} busca={buscaGeral}/></p></> },
                   { label: 'Previsões', items: previsoesEncontradas, render: p => <><p style={{ margin:0, fontWeight:700, fontSize:14 }}><Highlight text={p.titulo} busca={buscaGeral}/></p><p style={{ margin:'4px 0 0', fontSize:12, color:SUBTEXTO }}>📅 {formatarDataCurta(p.data)}</p>{p.descricao && <p style={{ margin:'8px 0 0', fontSize:13, color:'#aaa', lineHeight:1.5 }}><Highlight text={p.descricao.slice(0,150)+(p.descricao.length>150?'..':'')} busca={buscaGeral}/></p>}</> },
                 ].map(({ label, items, render }) => (
@@ -391,7 +385,6 @@ export default function Home() {
             </>
           )}
 
-          {/* CONTATOS */}
           {aba === 'contatos' && (
             <>
               <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16, flexWrap:'wrap', gap:12 }}>
@@ -435,7 +428,6 @@ export default function Home() {
             </>
           )}
 
-          {/* FORMULÁRIO */}
           {aba !== 'contatos' && aba !== 'busca' && aba !== 'calendario' && mostrarForm && (
             <div style={{ background:CARD, border:`1px solid ${BORDA}`, borderRadius:16, padding:'1.5rem', marginBottom:'1.5rem' }}>
               <h2 style={{ margin:'0 0 1rem', fontSize:15, fontWeight:700, color:AMARELO }}>{(editandoPauta||editandoRel||editandoPrev)?'✏️ Editar':`+ ${aba==='pautas'?'Nova Pauta':aba==='relatorios'?'Novo Relatório':'Nova Previsão'}`}</h2>
