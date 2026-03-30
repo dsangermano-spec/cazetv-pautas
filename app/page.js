@@ -265,10 +265,10 @@ function AbaMetricas({ metricas, onSalvar, onDeletar, onEditar, pautas }) {
         {modoImportar && (
           <div style={{ background:'#222', border:`1px solid ${BORDA}`, borderRadius:12, padding:'1.2rem', marginBottom:16 }}>
             <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:12 }}>
-              <h3 style={{ margin:0, fontSize:14, fontWeight:700, color:AMARELO }}>📋 Importar pauta existente</h3>
-              <button onClick={() => setModoImportar(false)} style={{ background:'none', border:'none', color:SUBTEXTO, cursor:'pointer', fontSize:16 }}>✕</button>
+              <h3 style={{ margin:0, fontSize:14, fontWeight:700, color:AMARELO }}>Importar pauta existente</h3>
+              <button onClick={() => setModoImportar(false)} style={{ background:'none', border:'none', color:SUBTEXTO, cursor:'pointer', fontSize:16 }}>X</button>
             </div>
-            <input type="text" placeholder="Buscar pauta por título ou repórter..." value={buscaPauta} onChange={e => setBuscaPauta(e.target.value)} style={{...inp, marginTop:0, marginBottom:12}} autoFocus />
+            <input type="text" placeholder="Buscar pauta por titulo ou reporter..." value={buscaPauta} onChange={e => setBuscaPauta(e.target.value)} style={{...inp, marginTop:0, marginBottom:12}} />
             <div style={{ maxHeight:240, overflowY:'auto', display:'flex', flexDirection:'column', gap:6 }}>
               {pautasFiltradas.length === 0 && <p style={{ color:SUBTEXTO, fontSize:13, textAlign:'center', padding:'1rem 0' }}>Nenhuma pauta encontrada.</p>}
               {pautasFiltradas.map(p => (
@@ -276,7 +276,7 @@ function AbaMetricas({ metricas, onSalvar, onDeletar, onEditar, pautas }) {
                   onMouseEnter={e => e.currentTarget.style.borderColor=AMARELO}
                   onMouseLeave={e => e.currentTarget.style.borderColor=BORDA}>
                   <p style={{ margin:0, fontWeight:700, fontSize:13, color:TEXTO }}>{p.titulo}</p>
-                  <p style={{ margin:'3px 0 0', fontSize:11, color:SUBTEXTO }}>👤 {p.reporter} · 📅 {formatarDataSimples(p.data)}</p>
+                  <p style={{ margin:'3px 0 0', fontSize:11, color:SUBTEXTO }}>👤 {p.reporter} · {formatarDataSimples(p.data)}</p>
                 </div>
               ))}
             </div>
