@@ -5,7 +5,10 @@ const VAZIO_PAUTA = { data: '', dataFim: '', reporter: '', titulo: '', conteudo:
 const VAZIO_RELATORIO = { data: '', reporter: '', texto: '' }
 const VAZIO_PREVISAO = { data: '', dataFim: '', titulo: '', descricao: '' }
 const VAZIO_CONTATO = { nome: '', telefone: '', cargo: '' }
+const VAZIO_PEDIDO = { data: '', quem: '', reporter: '', local: '', descricao: '' }
+
 const AMARELO = '#FFD600'
+const LARANJA = '#FF6B00'
 const ESCURO = '#111111'
 const CARD = '#1A1A1A'
 const BORDA = '#2A2A2A'
@@ -22,14 +25,10 @@ const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Ag
 const DIAS_SEMANA = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb']
 
 function formatarData(data) {
-  return new Date(data + 'T12:00:00').toLocaleDateString('pt-BR', {
-    weekday: 'long', day: '2-digit', month: 'long', year: 'numeric'
-  })
+  return new Date(data + 'T12:00:00').toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' })
 }
 function formatarDataCurta(data) {
-  return new Date(data + 'T12:00:00').toLocaleDateString('pt-BR', {
-    weekday: 'short', day: '2-digit', month: 'short'
-  })
+  return new Date(data + 'T12:00:00').toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: 'short' })
 }
 function formatarDataSimples(data) {
   return new Date(data + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })
@@ -40,18 +39,13 @@ function getDatasNoPeriodo(dataInicio, dataFim) {
   const datas = []
   const d = new Date(dataInicio + 'T12:00:00')
   const fim = new Date((dataFim || dataInicio) + 'T12:00:00')
-  while (d <= fim) {
-    datas.push(d.toISOString().split('T')[0])
-    d.setDate(d.getDate() + 1)
-  }
+  while (d <= fim) { datas.push(d.toISOString().split('T')[0]); d.setDate(d.getDate() + 1) }
   return datas
 }
 
 function diffDias(dataInicio, dataFim) {
   if (!dataFim || dataFim === dataInicio) return 1
-  const d1 = new Date(dataInicio + 'T12:00:00')
-  const d2 = new Date(dataFim + 'T12:00:00')
-  return Math.round((d2 - d1) / (1000 * 60 * 60 * 24)) + 1
+  return Math.round((new Date(dataFim + 'T12:00:00') - new Date(dataInicio + 'T12:00:00')) / (1000*60*60*24)) + 1
 }
 
 function Highlight({ text, busca }) {
@@ -60,7 +54,7 @@ function Highlight({ text, busca }) {
   return <span>{parts.map((p, i) => p.toLowerCase() === busca.toLowerCase() ? <mark key={i} style={{ background: AMARELO, color: '#000', borderRadius: 3, padding: '0 2px', fontWeight: 700 }}>{p}</mark> : p)}</span>
 }
 
-function Calendario({ pautas, relatorios, previsoes, onDiaClick }) {
+function Calendario({ pautas, relatorios, previsoes, pedidos, onDiaClick }) {
   const hoje = new Date()
   const [mes, setMes] = useState(hoje.getMonth())
   const [ano, setAno] = useState(hoje.getFullYear())
@@ -75,6 +69,7 @@ function Calendario({ pautas, relatorios, previsoes, onDiaClick }) {
       pautas: pautas.filter(p => getDatasNoPeriodo(p.data, p.dataFim).includes(str)),
       relatorios: relatorios.filter(r => r.data === str),
       previsoes: previsoes.filter(p => getDatasNoPeriodo(p.data, p.dataFim).includes(str)),
+      pedidos: pedidos.filter(p => p.data === str),
     }
   }
 
@@ -104,7 +99,7 @@ function Calendario({ pautas, relatorios, previsoes, onDiaClick }) {
           if (!d) return <div key={i} />
           const info = getDia(d)
           const isHoje = info.str === hojeStr
-          const total = info.pautas.length + info.relatorios.length + info.previsoes.length
+          const total = info.pautas.length + info.relatorios.length + info.previsoes.length + info.pedidos.length
           const MAX = 2
           return (
             <div key={i} onClick={() => total > 0 && onDiaClick(info)} style={{
@@ -115,20 +110,27 @@ function Calendario({ pautas, relatorios, previsoes, onDiaClick }) {
               onMouseLeave={e => { if (!isHoje) e.currentTarget.style.borderColor = BORDA }}>
               <div style={{ fontSize: 12, fontWeight: 700, color: isHoje ? AMARELO : SUBTEXTO, marginBottom: 4 }}>{d}</div>
               {info.pautas.slice(0, MAX).map((p, j) => (
-                <div key={j} style={{ background: AMARELO, color: '#000', borderRadius: 4, padding: '2px 5px', fontSize: 10, fontWeight: 700, marginBottom: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                  {p.dataFim && p.dataFim !== p.data ? '🗓 ' : ''}{p.titulo}
-                </div>
+                <div key={j} style={{ background: AMARELO, color: '#000', borderRadius: 4, padding: '2px 5px', fontSize: 10, fontWeight: 700, marginBottom: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.titulo}</div>
               ))}
-              {info.relatorios.slice(0, info.pautas.length < MAX ? MAX - info.pautas.length : 0).map((r, j) => (
+              {info.pedidos.slice(0, Math.max(0, MAX - info.pautas.length)).map((p, j) => (
+                <div key={j} style={{ background: LARANJA, color: '#fff', borderRadius: 4, padding: '2px 5px', fontSize: 10, fontWeight: 700, marginBottom: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>📥 {p.descricao?.slice(0,15) || 'Pedido'}</div>
+              ))}
+              {info.relatorios.slice(0, Math.max(0, MAX - info.pautas.length - info.pedidos.length)).map((r, j) => (
                 <div key={j} style={{ background: '#2A2A2A', color: '#888', border: '0.5px solid #444', borderRadius: 4, padding: '2px 5px', fontSize: 10, marginBottom: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>📝 {r.reporter}</div>
               ))}
-              {info.previsoes.slice(0, Math.max(0, MAX - info.pautas.length - info.relatorios.length)).map((p, j) => (
+              {info.previsoes.slice(0, Math.max(0, MAX - info.pautas.length - info.pedidos.length - info.relatorios.length)).map((p, j) => (
                 <div key={j} style={{ background: '#1a1a2e', color: '#8888ff', border: '0.5px solid #333366', borderRadius: 4, padding: '2px 5px', fontSize: 10, marginBottom: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>🔭 {p.titulo}</div>
               ))}
               {total > MAX && <div style={{ fontSize: 10, color: SUBTEXTO, marginTop: 2 }}>+{total - MAX} mais</div>}
             </div>
           )
         })}
+      </div>
+      <div style={{ marginTop: 16, display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}><div style={{ width: 10, height: 10, background: AMARELO, borderRadius: 2 }} /><span style={{ fontSize: 11, color: SUBTEXTO }}>Pautas</span></div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}><div style={{ width: 10, height: 10, background: LARANJA, borderRadius: 2 }} /><span style={{ fontSize: 11, color: SUBTEXTO }}>Pedidos</span></div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}><div style={{ width: 10, height: 10, background: '#2A2A2A', border: '0.5px solid #444', borderRadius: 2 }} /><span style={{ fontSize: 11, color: SUBTEXTO }}>Relatórios</span></div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}><div style={{ width: 10, height: 10, background: '#1a1a2e', border: '0.5px solid #333366', borderRadius: 2 }} /><span style={{ fontSize: 11, color: SUBTEXTO }}>Previsões</span></div>
       </div>
     </div>
   )
@@ -140,6 +142,7 @@ export default function Home() {
   const [relatorios, setRelatorios] = useState([])
   const [previsoes, setPrevisoes] = useState([])
   const [contatos, setContatos] = useState([])
+  const [pedidos, setPedidos] = useState([])
   const [busca, setBusca] = useState('')
   const [buscaGeral, setBuscaGeral] = useState('')
   const [dataSelecionada, setDataSelecionada] = useState(null)
@@ -156,21 +159,25 @@ export default function Home() {
   const [editandoRel, setEditandoRel] = useState(null)
   const [formPrev, setFormPrev] = useState(VAZIO_PREVISAO)
   const [editandoPrev, setEditandoPrev] = useState(null)
+  const [formPedido, setFormPedido] = useState(VAZIO_PEDIDO)
+  const [editandoPedido, setEditandoPedido] = useState(null)
 
   useEffect(() => { carregarTudo() }, [])
 
   async function carregarTudo() {
     setLoading(true)
-    const [rP, rR, rPrev, rC] = await Promise.all([
+    const [rP, rR, rPrev, rC, rPed] = await Promise.all([
       fetch('/api/pautas').then(r => r.json()),
       fetch('/api/relatorios').then(r => r.json()),
       fetch('/api/previsoes').then(r => r.json()),
       fetch('/api/contatos').then(r => r.json()),
+      fetch('/api/pedidos').then(r => r.json()),
     ])
-    setPautas(rP.sort((a, b) => a.data.localeCompare(b.data)))
-    setRelatorios(rR.sort((a, b) => a.data.localeCompare(b.data)))
-    setPrevisoes(rPrev.sort((a, b) => a.data.localeCompare(b.data)))
-    setContatos(rC.sort((a, b) => a.nome.localeCompare(b.nome)))
+    setPautas(rP.sort((a,b) => a.data.localeCompare(b.data)))
+    setRelatorios(rR.sort((a,b) => a.data.localeCompare(b.data)))
+    setPrevisoes(rPrev.sort((a,b) => a.data.localeCompare(b.data)))
+    setContatos(rC.sort((a,b) => a.nome.localeCompare(b.nome)))
+    setPedidos(rPed.sort((a,b) => a.data.localeCompare(b.data)))
     setLoading(false)
   }
 
@@ -178,16 +185,13 @@ export default function Home() {
   async function carregarRelatorios() { const r = await fetch('/api/relatorios'); setRelatorios((await r.json()).sort((a,b) => a.data.localeCompare(b.data))) }
   async function carregarPrevisoes() { const r = await fetch('/api/previsoes'); setPrevisoes((await r.json()).sort((a,b) => a.data.localeCompare(b.data))) }
   async function carregarContatos() { const r = await fetch('/api/contatos'); setContatos((await r.json()).sort((a,b) => a.nome.localeCompare(b.nome))) }
+  async function carregarPedidos() { const r = await fetch('/api/pedidos'); setPedidos((await r.json()).sort((a,b) => a.data.localeCompare(b.data))) }
 
-  // Gera lista de datas únicas para a sidebar considerando períodos
   function getDatasUnicas(lista) {
     const set = new Set()
-    lista.forEach(item => {
-      getDatasNoPeriodo(item.data, item.dataFim).forEach(d => set.add(d))
-    })
+    lista.forEach(item => getDatasNoPeriodo(item.data, item.dataFim).forEach(d => set.add(d)))
     return Array.from(set).sort()
   }
-
   function getItensDoDia(lista, data) {
     return lista.filter(item => getDatasNoPeriodo(item.data, item.dataFim).includes(data))
   }
@@ -202,15 +206,34 @@ export default function Home() {
     window.open(tel ? `https://wa.me/${tel}?text=${encodeURIComponent(msg)}` : `https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank')
   }
 
+  async function converterEmPauta(pedido) {
+    if (!confirm(`Converter "${pedido.descricao?.slice(0,40)}" em pauta?`)) return
+    const novaPauta = {
+      data: pedido.data, dataFim: pedido.data,
+      reporter: pedido.reporter || '',
+      titulo: pedido.descricao?.slice(0, 80) || 'Pauta sem título',
+      conteudo: `${pedido.descricao || ''}\n\n📍 Local: ${pedido.local || ''}\n👤 Solicitado por: ${pedido.quem || ''}`,
+      pdfUrl: ''
+    }
+    await fetch('/api/pautas', { method: 'POST', body: JSON.stringify(novaPauta) })
+    await fetch('/api/pedidos', { method: 'DELETE', body: JSON.stringify({ id: pedido.id }) })
+    carregarPautas()
+    carregarPedidos()
+    setAba('pautas')
+    setDataSelecionada(pedido.data)
+  }
+
   const datasP = getDatasUnicas(pautas)
   const datasR = getDatasUnicas(relatorios)
   const datasV = getDatasUnicas(previsoes)
-  const datas = aba === 'pautas' ? datasP : aba === 'relatorios' ? datasR : datasV
+  const datasPed = [...new Set(pedidos.map(p => p.data))].sort()
+  const datas = aba === 'pautas' ? datasP : aba === 'relatorios' ? datasR : aba === 'previsoes' ? datasV : datasPed
 
   const itensDoDia = dataSelecionada
     ? aba === 'pautas' ? getItensDoDia(pautas, dataSelecionada)
       : aba === 'relatorios' ? getItensDoDia(relatorios, dataSelecionada)
-      : getItensDoDia(previsoes, dataSelecionada)
+      : aba === 'previsoes' ? getItensDoDia(previsoes, dataSelecionada)
+      : pedidos.filter(p => p.data === dataSelecionada)
     : []
 
   const contatosFiltrados = contatos.filter(c => c.nome.toLowerCase().includes(busca.toLowerCase()) || (c.cargo||'').toLowerCase().includes(busca.toLowerCase()))
@@ -224,8 +247,7 @@ export default function Home() {
     setUploadando(true)
     const fd = new FormData(); fd.append('file', file)
     const res = await fetch('/api/upload', { method: 'POST', body: fd })
-    const data = await res.json()
-    setFormPauta(f => ({ ...f, pdfUrl: data.url }))
+    setFormPauta(f => ({ ...f, pdfUrl: (await res.json()).url }))
     setUploadando(false)
   }
 
@@ -236,7 +258,6 @@ export default function Home() {
     else await fetch('/api/pautas', { method: 'POST', body: JSON.stringify(payload) })
     setDataSelecionada(formPauta.data); setFormPauta(VAZIO_PAUTA); setMostrarForm(false); carregarPautas()
   }
-
   async function deletarPauta(id) { if (!confirm('Deletar?')) return; await fetch('/api/pautas', { method: 'DELETE', body: JSON.stringify({ id }) }); carregarPautas() }
   function editarPauta(p) { setFormPauta({ data:p.data, dataFim:p.dataFim||'', reporter:p.reporter, titulo:p.titulo, conteudo:p.conteudo, pdfUrl:p.pdfUrl||'' }); setEditandoPauta(p.id); setMostrarForm(true); window.scrollTo({top:0,behavior:'smooth'}) }
 
@@ -259,6 +280,15 @@ export default function Home() {
   async function deletarPrevisao(id) { if (!confirm('Deletar?')) return; await fetch('/api/previsoes', { method: 'DELETE', body: JSON.stringify({ id }) }); carregarPrevisoes() }
   function editarPrevisao(p) { setFormPrev({ data:p.data, dataFim:p.dataFim||'', titulo:p.titulo, descricao:p.descricao||'' }); setEditandoPrev(p.id); setMostrarForm(true); window.scrollTo({top:0,behavior:'smooth'}) }
 
+  async function salvarPedido() {
+    if (!formPedido.data||!formPedido.quem||!formPedido.descricao) return alert('Preencha data, quem pediu e descrição.')
+    if (editandoPedido) { await fetch('/api/pedidos', { method: 'PUT', body: JSON.stringify({ ...formPedido, id: editandoPedido }) }); setEditandoPedido(null) }
+    else await fetch('/api/pedidos', { method: 'POST', body: JSON.stringify(formPedido) })
+    setDataSelecionada(formPedido.data); setFormPedido(VAZIO_PEDIDO); setMostrarForm(false); carregarPedidos()
+  }
+  async function deletarPedido(id) { if (!confirm('Deletar este pedido?')) return; await fetch('/api/pedidos', { method: 'DELETE', body: JSON.stringify({ id }) }); carregarPedidos() }
+  function editarPedido(p) { setFormPedido({ data:p.data, quem:p.quem, reporter:p.reporter||'', local:p.local||'', descricao:p.descricao }); setEditandoPedido(p.id); setMostrarForm(true); window.scrollTo({top:0,behavior:'smooth'}) }
+
   async function salvarContato() {
     if (!formContato.nome||!formContato.telefone) return alert('Preencha nome e telefone.')
     if (editandoContato) { await fetch('/api/contatos', { method: 'PUT', body: JSON.stringify({ ...formContato, id: editandoContato }) }); setEditandoContato(null) }
@@ -269,236 +299,178 @@ export default function Home() {
   function editarContato(c) { setFormContato({ nome:c.nome, telefone:c.telefone, cargo:c.cargo||'' }); setEditandoContato(c.id); setMostrarForm(true) }
 
   function cancelar() {
-    setFormPauta(VAZIO_PAUTA); setFormRel(VAZIO_RELATORIO); setFormPrev(VAZIO_PREVISAO); setFormContato(VAZIO_CONTATO)
-    setEditandoPauta(null); setEditandoRel(null); setEditandoPrev(null); setEditandoContato(null); setMostrarForm(false)
+    setFormPauta(VAZIO_PAUTA); setFormRel(VAZIO_RELATORIO); setFormPrev(VAZIO_PREVISAO)
+    setFormContato(VAZIO_CONTATO); setFormPedido(VAZIO_PEDIDO)
+    setEditandoPauta(null); setEditandoRel(null); setEditandoPrev(null)
+    setEditandoContato(null); setEditandoPedido(null); setMostrarForm(false)
   }
 
   const abas = [
-    { id: 'pautas', label: '📋 Pautas' },
-    { id: 'relatorios', label: '📝 Relatórios' },
-    { id: 'previsoes', label: '🔭 Previsões' },
-    { id: 'contatos', label: '📞 Contatos' },
-    { id: 'busca', label: '🔍 Busca' },
-    { id: 'calendario', label: '📅 Calendário' },
+    { id: 'pautas', label: '📋 Pautas', cor: AMARELO },
+    { id: 'relatorios', label: '📝 Relatórios', cor: AMARELO },
+    { id: 'previsoes', label: '🔭 Previsões', cor: AMARELO },
+    { id: 'pedidos', label: '📥 Pedidos', cor: LARANJA },
+    { id: 'contatos', label: '📞 Contatos', cor: AMARELO },
+    { id: 'busca', label: '🔍 Busca', cor: AMARELO },
+    { id: 'calendario', label: '📅 Calendário', cor: AMARELO },
   ]
 
+  const corAba = aba === 'pedidos' ? LARANJA : AMARELO
+
   function PeriodoTag({ item }) {
-    const isMulti = item.dataFim && item.dataFim !== item.data
-    if (!isMulti) return null
-    const total = diffDias(item.data, item.dataFim)
-    return (
-      <span style={{ display: 'inline-block', background: '#2A2A2A', color: AMARELO, border: `0.5px solid ${AMARELO}`, borderRadius: 20, padding: '2px 10px', fontSize: 11, fontWeight: 700, marginTop: 6 }}>
-        🗓 {formatarDataSimples(item.data)} → {formatarDataSimples(item.dataFim)} · {total} dias
-      </span>
-    )
+    if (!item.dataFim || item.dataFim === item.data) return null
+    return <span style={{ display:'inline-block', background:'#2A2A2A', color:AMARELO, border:`0.5px solid ${AMARELO}`, borderRadius:20, padding:'2px 10px', fontSize:11, fontWeight:700, marginTop:6 }}>🗓 {formatarDataSimples(item.data)} → {formatarDataSimples(item.dataFim)} · {diffDias(item.data, item.dataFim)} dias</span>
   }
 
   function DiaInfo({ item, diaAtual }) {
     if (!item.dataFim || item.dataFim === item.data) return null
-    const datas = getDatasNoPeriodo(item.data, item.dataFim)
-    const diaNum = datas.indexOf(diaAtual) + 1
-    const total = datas.length
-    return <span style={{ fontSize: 11, color: SUBTEXTO, marginLeft: 8 }}>dia {diaNum} de {total}</span>
-  }
-
-  function CardPauta({ p }) {
-    const contato = contatos.find(c => c.nome.toLowerCase().includes(p.reporter.toLowerCase()) || p.reporter.toLowerCase().includes(c.nome.toLowerCase()))
-    return (
-      <div style={{ background: CARD, border: `1px solid ${BORDA}`, borderRadius: 12, padding: '1rem 1.2rem' }}
-        onMouseEnter={e => e.currentTarget.style.borderColor = AMARELO}
-        onMouseLeave={e => e.currentTarget.style.borderColor = BORDA}>
-        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-          <div>
-            <p style={{ margin: 0, fontWeight: 700, fontSize: 15 }}>{p.titulo}</p>
-            <p style={{ margin: '4px 0 0', fontSize: 13, color: SUBTEXTO }}>
-              👤 {p.reporter}
-              {dataSelecionada && <DiaInfo item={p} diaAtual={dataSelecionada} />}
-            </p>
-            <PeriodoTag item={p} />
-          </div>
-          <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start', flexShrink: 0, marginLeft: 12 }}>
-            <button onClick={() => enviarWhatsApp(p)} style={{ background: '#25D366', color: '#fff', border: 'none', borderRadius: 8, padding: '6px 12px', cursor: 'pointer', fontSize: 12, fontWeight: 700 }}>📲 {contato ? 'Enviar' : 'WhatsApp'}</button>
-            <button onClick={() => editarPauta(p)} style={{ background: 'none', border: 'none', color: AMARELO, cursor: 'pointer', fontSize: 13, fontWeight: 600 }}>Editar</button>
-            <button onClick={() => deletarPauta(p.id)} style={{ background: 'none', border: 'none', color: '#ff4444', cursor: 'pointer', fontSize: 13, fontWeight: 600 }}>Deletar</button>
-          </div>
-        </div>
-        <div style={{ marginTop: 10, display: 'flex', gap: 16, flexWrap: 'wrap' }}>
-          {p.conteudo && <button onClick={() => setExpandido(expandido === p.id ? null : p.id)} style={{ background: 'none', border: 'none', color: SUBTEXTO, cursor: 'pointer', fontSize: 12, padding: 0, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5 }}>{expandido === p.id ? '▲ Ocultar' : '▼ Ver pauta completa'}</button>}
-          {p.pdfUrl && <a href={p.pdfUrl} target="_blank" rel="noopener noreferrer" style={{ fontSize: 12, fontWeight: 600, color: AMARELO, textDecoration: 'none', textTransform: 'uppercase', letterSpacing: 0.5 }}>📄 Ver PDF</a>}
-        </div>
-        {expandido === p.id && p.conteudo && <p style={{ marginTop: 10, fontSize: 14, color: '#ccc', whiteSpace: 'pre-wrap', background: '#222', borderRadius: 8, padding: '12px 14px', lineHeight: 1.7, borderLeft: `3px solid ${AMARELO}` }}>{p.conteudo}</p>}
-      </div>
-    )
+    const ds = getDatasNoPeriodo(item.data, item.dataFim)
+    return <span style={{ fontSize:11, color:SUBTEXTO, marginLeft:8 }}>dia {ds.indexOf(diaAtual)+1} de {ds.length}</span>
   }
 
   function FormDataPeriodo({ dataInicio, dataFim, onChangeInicio, onChangeFim }) {
     const dias = dataInicio ? diffDias(dataInicio, dataFim || dataInicio) : 0
     return (
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
-        <div>
-          <label style={{ fontSize: 11, color: SUBTEXTO, fontWeight: 700, textTransform: 'uppercase' }}>Data início</label>
-          <input type="date" value={dataInicio} onChange={e => onChangeInicio(e.target.value)} style={{ ...inp, colorScheme: 'dark' }} />
-        </div>
-        <div>
-          <label style={{ fontSize: 11, color: SUBTEXTO, fontWeight: 700, textTransform: 'uppercase' }}>Data fim <span style={{ color: '#555', fontWeight: 400, textTransform: 'none' }}>(opcional)</span></label>
-          <input type="date" value={dataFim} min={dataInicio} onChange={e => onChangeFim(e.target.value)} style={{ ...inp, colorScheme: 'dark' }} />
-        </div>
-        {dataInicio && dataFim && dataFim !== dataInicio && (
-          <div style={{ gridColumn: '1/-1', marginTop: -6 }}>
-            <span style={{ fontSize: 11, color: AMARELO, fontWeight: 600 }}>✓ {dias} dias selecionados ({formatarDataSimples(dataInicio)} → {formatarDataSimples(dataFim)})</span>
-          </div>
-        )}
+      <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12, marginBottom:12 }}>
+        <div><label style={{ fontSize:11, color:SUBTEXTO, fontWeight:700, textTransform:'uppercase' }}>Data início</label><input type="date" value={dataInicio} onChange={e => onChangeInicio(e.target.value)} style={{...inp,colorScheme:'dark'}} /></div>
+        <div><label style={{ fontSize:11, color:SUBTEXTO, fontWeight:700, textTransform:'uppercase' }}>Data fim <span style={{ color:'#555', fontWeight:400, textTransform:'none' }}>(opcional)</span></label><input type="date" value={dataFim} min={dataInicio} onChange={e => onChangeFim(e.target.value)} style={{...inp,colorScheme:'dark'}} /></div>
+        {dataInicio && dataFim && dataFim !== dataInicio && <div style={{ gridColumn:'1/-1', marginTop:-6 }}><span style={{ fontSize:11, color:AMARELO, fontWeight:600 }}>✓ {dias} dias ({formatarDataSimples(dataInicio)} → {formatarDataSimples(dataFim)})</span></div>}
       </div>
     )
   }
 
-  return (
-    <main style={{ minHeight: '100vh', background: ESCURO, color: TEXTO, fontFamily: "'Inter','Helvetica Neue',sans-serif", display: 'flex', flexDirection: 'column' }}>
+  function CardPauta({ p }) {
+    const contato = contatos.find(c => c.nome.toLowerCase().includes(p.reporter.toLowerCase()) || p.reporter.toLowerCase().includes(c.nome.toLowerCase()))
+    return (
+      <div style={{ background:CARD, border:`1px solid ${BORDA}`, borderRadius:12, padding:'1rem 1.2rem' }}
+        onMouseEnter={e => e.currentTarget.style.borderColor = AMARELO}
+        onMouseLeave={e => e.currentTarget.style.borderColor = BORDA}>
+        <div style={{ display:'flex', justifyContent:'space-between' }}>
+          <div><p style={{ margin:0, fontWeight:700, fontSize:15 }}>{p.titulo}</p><p style={{ margin:'4px 0 0', fontSize:13, color:SUBTEXTO }}>👤 {p.reporter}{dataSelecionada && <DiaInfo item={p} diaAtual={dataSelecionada} />}</p><PeriodoTag item={p} /></div>
+          <div style={{ display:'flex', gap:12, alignItems:'flex-start', flexShrink:0, marginLeft:12 }}>
+            <button onClick={() => enviarWhatsApp(p)} style={{ background:'#25D366', color:'#fff', border:'none', borderRadius:8, padding:'6px 12px', cursor:'pointer', fontSize:12, fontWeight:700 }}>📲 {contato?'Enviar':'WhatsApp'}</button>
+            <button onClick={() => editarPauta(p)} style={{ background:'none', border:'none', color:AMARELO, cursor:'pointer', fontSize:13, fontWeight:600 }}>Editar</button>
+            <button onClick={() => deletarPauta(p.id)} style={{ background:'none', border:'none', color:'#ff4444', cursor:'pointer', fontSize:13, fontWeight:600 }}>Deletar</button>
+          </div>
+        </div>
+        <div style={{ marginTop:10, display:'flex', gap:16, flexWrap:'wrap' }}>
+          {p.conteudo && <button onClick={() => setExpandido(expandido===p.id?null:p.id)} style={{ background:'none', border:'none', color:SUBTEXTO, cursor:'pointer', fontSize:12, padding:0, fontWeight:600, textTransform:'uppercase', letterSpacing:0.5 }}>{expandido===p.id?'▲ Ocultar':'▼ Ver pauta completa'}</button>}
+          {p.pdfUrl && <a href={p.pdfUrl} target="_blank" rel="noopener noreferrer" style={{ fontSize:12, fontWeight:600, color:AMARELO, textDecoration:'none', textTransform:'uppercase', letterSpacing:0.5 }}>📄 Ver PDF</a>}
+        </div>
+        {expandido===p.id && p.conteudo && <p style={{ marginTop:10, fontSize:14, color:'#ccc', whiteSpace:'pre-wrap', background:'#222', borderRadius:8, padding:'12px 14px', lineHeight:1.7, borderLeft:`3px solid ${AMARELO}` }}>{p.conteudo}</p>}
+      </div>
+    )
+  }
 
-      <header style={{ background: '#000', borderBottom: `3px solid ${AMARELO}`, padding: '1rem 1.5rem', display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
-        <span style={{ background: AMARELO, color: '#000', fontWeight: 900, fontSize: 18, padding: '4px 10px', borderRadius: 6 }}>CazéTV</span>
-        <span style={{ fontWeight: 700, fontSize: 18 }}>PAUTAS & RELATÓRIOS</span>
+  const hasSidebar = aba !== 'contatos' && aba !== 'busca' && aba !== 'calendario'
+
+  return (
+    <main style={{ minHeight:'100vh', background:ESCURO, color:TEXTO, fontFamily:"'Inter','Helvetica Neue',sans-serif", display:'flex', flexDirection:'column' }}>
+      <header style={{ background:'#000', borderBottom:`3px solid ${AMARELO}`, padding:'1rem 1.5rem', display:'flex', alignItems:'center', gap:12, flexShrink:0 }}>
+        <span style={{ background:AMARELO, color:'#000', fontWeight:900, fontSize:18, padding:'4px 10px', borderRadius:6 }}>CazéTV</span>
+        <span style={{ fontWeight:700, fontSize:18 }}>PAUTAS & RELATÓRIOS</span>
       </header>
 
-      <div style={{ display: 'flex', gap: 4, padding: '8px 12px', background: CARD, borderBottom: `1px solid ${BORDA}`, flexShrink: 0, flexWrap: 'wrap' }}>
+      <div style={{ display:'flex', gap:4, padding:'8px 12px', background:CARD, borderBottom:`1px solid ${BORDA}`, flexShrink:0, flexWrap:'wrap' }}>
         {abas.map(a => (
           <button key={a.id} onClick={() => { setAba(a.id); setDataSelecionada(null); setMostrarForm(false); setBusca(''); setBuscaGeral('') }} style={{
-            padding: '8px 20px', border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 700, fontSize: 14,
-            background: aba === a.id ? AMARELO : 'transparent', color: aba === a.id ? '#000' : SUBTEXTO,
+            padding:'8px 20px', border:'none', borderRadius:8, cursor:'pointer', fontWeight:700, fontSize:14,
+            background: aba === a.id ? a.cor : 'transparent',
+            color: aba === a.id ? (a.id === 'pedidos' ? '#fff' : '#000') : SUBTEXTO,
           }}>{a.label}</button>
         ))}
       </div>
 
-      <div style={{ display: 'flex', flex: 1, overflow: 'hidden', minHeight: 0 }}>
-
-        {aba !== 'contatos' && aba !== 'busca' && aba !== 'calendario' && (
-          <aside style={{ width: '35%', flexShrink: 0, borderRight: `1px solid ${BORDA}`, padding: '12px 8px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 4 }}>
-            <p style={{ fontSize: 10, color: SUBTEXTO, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, padding: '0 6px', marginBottom: 4 }}>Datas</p>
-            {loading && <p style={{ fontSize: 12, color: SUBTEXTO, padding: '0 6px' }}>Carregando...</p>}
-            {!loading && datas.length === 0 && <p style={{ fontSize: 12, color: SUBTEXTO, padding: '0 6px' }}>Nenhum registro.</p>}
+      <div style={{ display:'flex', flex:1, overflow:'hidden', minHeight:0 }}>
+        {hasSidebar && (
+          <aside style={{ width:'35%', flexShrink:0, borderRight:`1px solid ${BORDA}`, padding:'12px 8px', overflowY:'auto', display:'flex', flexDirection:'column', gap:4 }}>
+            <p style={{ fontSize:10, color:SUBTEXTO, fontWeight:700, textTransform:'uppercase', letterSpacing:1, padding:'0 6px', marginBottom:4 }}>Datas</p>
+            {loading && <p style={{ fontSize:12, color:SUBTEXTO, padding:'0 6px' }}>Carregando...</p>}
+            {!loading && datas.length === 0 && <p style={{ fontSize:12, color:SUBTEXTO, padding:'0 6px' }}>Nenhum registro.</p>}
             {datas.map(d => {
-              const count = aba === 'pautas' ? getItensDoDia(pautas, d).length : aba === 'relatorios' ? getItensDoDia(relatorios, d).length : getItensDoDia(previsoes, d).length
+              const count = aba==='pautas' ? getItensDoDia(pautas,d).length : aba==='relatorios' ? getItensDoDia(relatorios,d).length : aba==='previsoes' ? getItensDoDia(previsoes,d).length : pedidos.filter(p=>p.data===d).length
+              const isActive = dataSelecionada === d
               return (
                 <button key={d} onClick={() => { setDataSelecionada(d); setMostrarForm(false) }} style={{
-                  width: '100%', textAlign: 'left', border: 'none', borderRadius: 8, padding: '10px 12px', cursor: 'pointer',
-                  background: dataSelecionada === d ? AMARELO : CARD, color: dataSelecionada === d ? '#000' : TEXTO,
-                  outline: dataSelecionada === d ? 'none' : `1px solid ${BORDA}`,
+                  width:'100%', textAlign:'left', border:'none', borderRadius:8, padding:'10px 12px', cursor:'pointer',
+                  background: isActive ? corAba : CARD,
+                  color: isActive ? (aba==='pedidos'?'#fff':'#000') : TEXTO,
+                  outline: isActive ? 'none' : `1px solid ${BORDA}`,
                 }}>
-                  <span style={{ display: 'block', fontSize: 13, fontWeight: 700 }}>{formatarDataCurta(d)}</span>
-                  <span style={{ display: 'block', fontSize: 11, opacity: 0.7, marginTop: 2 }}>{count} {aba === 'pautas' ? 'pauta(s)' : aba === 'relatorios' ? 'relatório(s)' : 'previsão(ões)'}</span>
+                  <span style={{ display:'block', fontSize:13, fontWeight:700 }}>{formatarDataCurta(d)}</span>
+                  <span style={{ display:'block', fontSize:11, opacity:0.7, marginTop:2 }}>{count} {aba==='pautas'?'pauta(s)':aba==='relatorios'?'relatório(s)':aba==='previsoes'?'previsão(ões)':'pedido(s)'}</span>
                 </button>
               )
             })}
-            <button onClick={() => { setMostrarForm(true); setDataSelecionada(null); cancelar() }} style={{
-              marginTop: 8, width: '100%', padding: '6px 0', background: 'transparent',
-              border: `1px dashed ${BORDA}`, borderRadius: 8, color: '#444', fontSize: 11, cursor: 'pointer'
-            }}>+ nova data</button>
+            <button onClick={() => { setMostrarForm(true); setDataSelecionada(null); cancelar() }} style={{ marginTop:8, width:'100%', padding:'6px 0', background:'transparent', border:`1px dashed ${BORDA}`, borderRadius:8, color:'#444', fontSize:11, cursor:'pointer' }}>+ nova data</button>
           </aside>
         )}
 
-        <section style={{ flex: 1, overflowY: 'auto', padding: '1.5rem' }}>
+        <section style={{ flex:1, overflowY:'auto', padding:'1.5rem' }}>
 
+          {/* CALENDÁRIO */}
           {aba === 'calendario' && (
             <>
-              <Calendario pautas={pautas} relatorios={relatorios} previsoes={previsoes} onDiaClick={setDiaModal} />
-              <div style={{ marginTop: 16, display: 'flex', gap: 16, flexWrap: 'wrap' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}><div style={{ width: 12, height: 12, background: AMARELO, borderRadius: 3 }} /><span style={{ fontSize: 12, color: SUBTEXTO }}>Pautas</span></div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}><div style={{ width: 12, height: 12, background: '#2A2A2A', border: '0.5px solid #444', borderRadius: 3 }} /><span style={{ fontSize: 12, color: SUBTEXTO }}>Relatórios</span></div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}><div style={{ width: 12, height: 12, background: '#1a1a2e', border: '0.5px solid #333366', borderRadius: 3 }} /><span style={{ fontSize: 12, color: SUBTEXTO }}>Previsões</span></div>
-              </div>
+              <Calendario pautas={pautas} relatorios={relatorios} previsoes={previsoes} pedidos={pedidos} onDiaClick={setDiaModal} />
               {diaModal && (
-                <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }} onClick={() => setDiaModal(null)}>
-                  <div style={{ background: '#1A1A1A', border: `1px solid ${BORDA}`, borderRadius: 16, padding: '1.5rem', maxWidth: 500, width: '90%', maxHeight: '80vh', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-                      <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: AMARELO }}>{formatarData(diaModal.str)}</h3>
-                      <button onClick={() => setDiaModal(null)} style={{ background: 'none', border: 'none', color: SUBTEXTO, cursor: 'pointer', fontSize: 18 }}>✕</button>
+                <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.7)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:1000 }} onClick={() => setDiaModal(null)}>
+                  <div style={{ background:'#1A1A1A', border:`1px solid ${BORDA}`, borderRadius:16, padding:'1.5rem', maxWidth:500, width:'90%', maxHeight:'80vh', overflowY:'auto' }} onClick={e => e.stopPropagation()}>
+                    <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16 }}>
+                      <h3 style={{ margin:0, fontSize:15, fontWeight:700, color:AMARELO }}>{formatarData(diaModal.str)}</h3>
+                      <button onClick={() => setDiaModal(null)} style={{ background:'none', border:'none', color:SUBTEXTO, cursor:'pointer', fontSize:18 }}>✕</button>
                     </div>
-                    {diaModal.pautas.length > 0 && <>
-                      <p style={{ fontSize: 11, fontWeight: 700, color: SUBTEXTO, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>📋 Pautas</p>
-                      {diaModal.pautas.map(p => (
-                        <div key={p.id} style={{ background: '#222', borderRadius: 10, padding: '10px 14px', marginBottom: 8 }}>
-                          <p style={{ margin: 0, fontWeight: 700, fontSize: 14 }}>{p.titulo}</p>
-                          <p style={{ margin: '4px 0 0', fontSize: 12, color: SUBTEXTO }}>👤 {p.reporter}</p>
-                          {p.dataFim && p.dataFim !== p.data && <span style={{ display: 'inline-block', background: '#2A2A2A', color: AMARELO, borderRadius: 20, padding: '2px 8px', fontSize: 10, fontWeight: 700, marginTop: 4 }}>🗓 {formatarDataSimples(p.data)} → {formatarDataSimples(p.dataFim)}</span>}
-                          {p.conteudo && <p style={{ margin: '8px 0 0', fontSize: 13, color: '#aaa', lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>{p.conteudo}</p>}
-                          <div style={{ marginTop: 10, display: 'flex', gap: 10 }}>
-                            <button onClick={() => enviarWhatsApp(p)} style={{ background: '#25D366', color: '#fff', border: 'none', borderRadius: 6, padding: '5px 10px', cursor: 'pointer', fontSize: 12, fontWeight: 700 }}>📲 WhatsApp</button>
-                            {p.pdfUrl && <a href={p.pdfUrl} target="_blank" rel="noopener noreferrer" style={{ fontSize: 12, fontWeight: 600, color: AMARELO, textDecoration: 'none' }}>📄 PDF</a>}
-                          </div>
-                        </div>
-                      ))}
-                    </>}
-                    {diaModal.relatorios.length > 0 && <>
-                      <p style={{ fontSize: 11, fontWeight: 700, color: SUBTEXTO, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8, marginTop: 12 }}>📝 Relatórios</p>
-                      {diaModal.relatorios.map(r => (
-                        <div key={r.id} style={{ background: '#222', borderRadius: 10, padding: '10px 14px', marginBottom: 8 }}>
-                          <p style={{ margin: 0, fontSize: 12, color: SUBTEXTO }}>👤 {r.reporter}</p>
-                          <p style={{ margin: '8px 0 0', fontSize: 13, color: '#aaa', whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>{r.texto}</p>
-                        </div>
-                      ))}
-                    </>}
-                    {diaModal.previsoes.length > 0 && <>
-                      <p style={{ fontSize: 11, fontWeight: 700, color: SUBTEXTO, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8, marginTop: 12 }}>🔭 Previsões</p>
-                      {diaModal.previsoes.map(p => (
-                        <div key={p.id} style={{ background: '#222', borderRadius: 10, padding: '10px 14px', marginBottom: 8 }}>
-                          <p style={{ margin: 0, fontWeight: 700, fontSize: 14 }}>{p.titulo}</p>
-                          {p.dataFim && p.dataFim !== p.data && <span style={{ display: 'inline-block', background: '#2A2A2A', color: '#8888ff', borderRadius: 20, padding: '2px 8px', fontSize: 10, fontWeight: 700, marginTop: 4 }}>🗓 {formatarDataSimples(p.data)} → {formatarDataSimples(p.dataFim)}</span>}
-                          {p.descricao && <p style={{ margin: '8px 0 0', fontSize: 13, color: '#aaa', whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>{p.descricao}</p>}
-                        </div>
-                      ))}
-                    </>}
+                    {diaModal.pautas?.length > 0 && <><p style={{ fontSize:11, fontWeight:700, color:SUBTEXTO, textTransform:'uppercase', letterSpacing:1, marginBottom:8 }}>📋 Pautas</p>{diaModal.pautas.map(p => <div key={p.id} style={{ background:'#222', borderRadius:10, padding:'10px 14px', marginBottom:8 }}><p style={{ margin:0, fontWeight:700, fontSize:14 }}>{p.titulo}</p><p style={{ margin:'4px 0 0', fontSize:12, color:SUBTEXTO }}>👤 {p.reporter}</p>{p.conteudo && <p style={{ margin:'8px 0 0', fontSize:13, color:'#aaa', lineHeight:1.5, whiteSpace:'pre-wrap' }}>{p.conteudo}</p>}<div style={{ marginTop:10 }}><button onClick={() => enviarWhatsApp(p)} style={{ background:'#25D366', color:'#fff', border:'none', borderRadius:6, padding:'5px 10px', cursor:'pointer', fontSize:12, fontWeight:700 }}>📲 WhatsApp</button></div></div>)}</>}
+                    {diaModal.pedidos?.length > 0 && <><p style={{ fontSize:11, fontWeight:700, color:LARANJA, textTransform:'uppercase', letterSpacing:1, marginBottom:8, marginTop:12 }}>📥 Pedidos</p>{diaModal.pedidos.map(p => <div key={p.id} style={{ background:'#222', border:`0.5px solid ${LARANJA}`, borderRadius:10, padding:'10px 14px', marginBottom:8 }}><p style={{ margin:0, fontWeight:700, fontSize:14, color:TEXTO }}>{p.descricao}</p><p style={{ margin:'4px 0 0', fontSize:12, color:SUBTEXTO }}>👤 {p.quem}{p.reporter && ` · 🎙️ ${p.reporter}`}{p.local && ` · 📍 ${p.local}`}</p><button onClick={() => { converterEmPauta(p); setDiaModal(null) }} style={{ marginTop:10, background:AMARELO, color:'#000', border:'none', borderRadius:6, padding:'5px 10px', cursor:'pointer', fontSize:12, fontWeight:700 }}>✅ Converter em pauta</button></div>)}</>}
+                    {diaModal.relatorios?.length > 0 && <><p style={{ fontSize:11, fontWeight:700, color:SUBTEXTO, textTransform:'uppercase', letterSpacing:1, marginBottom:8, marginTop:12 }}>📝 Relatórios</p>{diaModal.relatorios.map(r => <div key={r.id} style={{ background:'#222', borderRadius:10, padding:'10px 14px', marginBottom:8 }}><p style={{ margin:0, fontSize:12, color:SUBTEXTO }}>👤 {r.reporter}</p><p style={{ margin:'8px 0 0', fontSize:13, color:'#aaa', whiteSpace:'pre-wrap', lineHeight:1.5 }}>{r.texto}</p></div>)}</>}
+                    {diaModal.previsoes?.length > 0 && <><p style={{ fontSize:11, fontWeight:700, color:SUBTEXTO, textTransform:'uppercase', letterSpacing:1, marginBottom:8, marginTop:12 }}>🔭 Previsões</p>{diaModal.previsoes.map(p => <div key={p.id} style={{ background:'#222', borderRadius:10, padding:'10px 14px', marginBottom:8 }}><p style={{ margin:0, fontWeight:700, fontSize:14 }}>{p.titulo}</p>{p.descricao && <p style={{ margin:'8px 0 0', fontSize:13, color:'#aaa', whiteSpace:'pre-wrap', lineHeight:1.5 }}>{p.descricao}</p>}</div>)}</>}
                   </div>
                 </div>
               )}
             </>
           )}
 
+          {/* BUSCA */}
           {aba === 'busca' && (
             <>
-              <input type="text" placeholder="🔍 Digite uma palavra para buscar em pautas, relatórios e previsões..." value={buscaGeral} onChange={e => setBuscaGeral(e.target.value)} autoFocus style={{ ...inp, marginTop: 0, marginBottom: '1.5rem', fontSize: 15 }} />
-              {!buscaGeral && <p style={{ color: SUBTEXTO, fontSize: 14, textAlign: 'center', padding: '3rem 0' }}>Digite algo para começar a busca.</p>}
+              <input type="text" placeholder="🔍 Digite uma palavra para buscar..." value={buscaGeral} onChange={e => setBuscaGeral(e.target.value)} autoFocus style={{...inp, marginTop:0, marginBottom:'1.5rem', fontSize:15}} />
+              {!buscaGeral && <p style={{ color:SUBTEXTO, fontSize:14, textAlign:'center', padding:'3rem 0' }}>Digite algo para começar a busca.</p>}
               {buscaGeral && (<>
                 {[
-                  { label: 'Pautas', items: pautasEncontradas, render: p => <><p style={{ margin:0, fontWeight:700, fontSize:14 }}><Highlight text={p.titulo} busca={buscaGeral}/></p><p style={{ margin:'4px 0 0', fontSize:12, color:SUBTEXTO }}>👤 <Highlight text={p.reporter} busca={buscaGeral}/> · 📅 {formatarDataSimples(p.data)}{p.dataFim && p.dataFim !== p.data ? ` → ${formatarDataSimples(p.dataFim)}` : ''}</p>{p.conteudo && <p style={{ margin:'8px 0 0', fontSize:13, color:'#aaa', lineHeight:1.5 }}><Highlight text={p.conteudo.slice(0,150)+(p.conteudo.length>150?'..':'')} busca={buscaGeral}/></p>}</> },
-                  { label: 'Relatórios', items: relatoriosEncontrados, render: r => <><p style={{ margin:0, fontSize:12, color:SUBTEXTO }}>👤 <Highlight text={r.reporter} busca={buscaGeral}/> · 📅 {formatarDataCurta(r.data)}</p><p style={{ margin:'8px 0 0', fontSize:13, color:'#aaa', lineHeight:1.5 }}><Highlight text={r.texto.slice(0,150)+(r.texto.length>150?'..':'')} busca={buscaGeral}/></p></> },
-                  { label: 'Previsões', items: previsoesEncontradas, render: p => <><p style={{ margin:0, fontWeight:700, fontSize:14 }}><Highlight text={p.titulo} busca={buscaGeral}/></p><p style={{ margin:'4px 0 0', fontSize:12, color:SUBTEXTO }}>📅 {formatarDataSimples(p.data)}{p.dataFim && p.dataFim !== p.data ? ` → ${formatarDataSimples(p.dataFim)}` : ''}</p>{p.descricao && <p style={{ margin:'8px 0 0', fontSize:13, color:'#aaa', lineHeight:1.5 }}><Highlight text={p.descricao.slice(0,150)+(p.descricao.length>150?'..':'')} busca={buscaGeral}/></p>}</> },
+                  { label:'Pautas', items:pautasEncontradas, render: p => <><p style={{ margin:0, fontWeight:700, fontSize:14 }}><Highlight text={p.titulo} busca={buscaGeral}/></p><p style={{ margin:'4px 0 0', fontSize:12, color:SUBTEXTO }}>👤 <Highlight text={p.reporter} busca={buscaGeral}/> · 📅 {formatarDataSimples(p.data)}{p.dataFim&&p.dataFim!==p.data?` → ${formatarDataSimples(p.dataFim)}`:''}</p>{p.conteudo&&<p style={{ margin:'8px 0 0', fontSize:13, color:'#aaa', lineHeight:1.5 }}><Highlight text={p.conteudo.slice(0,150)+(p.conteudo.length>150?'..':'')} busca={buscaGeral}/></p>}</> },
+                  { label:'Relatórios', items:relatoriosEncontrados, render: r => <><p style={{ margin:0, fontSize:12, color:SUBTEXTO }}>👤 <Highlight text={r.reporter} busca={buscaGeral}/> · 📅 {formatarDataCurta(r.data)}</p><p style={{ margin:'8px 0 0', fontSize:13, color:'#aaa', lineHeight:1.5 }}><Highlight text={r.texto.slice(0,150)+(r.texto.length>150?'..':'')} busca={buscaGeral}/></p></> },
+                  { label:'Previsões', items:previsoesEncontradas, render: p => <><p style={{ margin:0, fontWeight:700, fontSize:14 }}><Highlight text={p.titulo} busca={buscaGeral}/></p><p style={{ margin:'4px 0 0', fontSize:12, color:SUBTEXTO }}>📅 {formatarDataSimples(p.data)}{p.dataFim&&p.dataFim!==p.data?` → ${formatarDataSimples(p.dataFim)}`:''}</p>{p.descricao&&<p style={{ margin:'8px 0 0', fontSize:13, color:'#aaa', lineHeight:1.5 }}><Highlight text={p.descricao.slice(0,150)+(p.descricao.length>150?'..':'')} busca={buscaGeral}/></p>}</> },
                 ].map(({ label, items, render }) => (
-                  <div key={label} style={{ marginBottom: '1.5rem' }}>
+                  <div key={label} style={{ marginBottom:'1.5rem' }}>
                     <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:10 }}>
                       <div style={{ width:4, height:16, background:AMARELO, borderRadius:2 }} />
                       <span style={{ fontSize:12, fontWeight:700, color:SUBTEXTO, textTransform:'uppercase', letterSpacing:1 }}>{label}</span>
                       <span style={{ fontSize:11, color:'#555', marginLeft:4 }}>{items.length} resultado(s)</span>
                     </div>
                     {items.length === 0 && <p style={{ color:SUBTEXTO, fontSize:13 }}>Nenhum resultado.</p>}
-                    {items.map(item => (
-                      <div key={item.id} style={{ background:CARD, border:`1px solid ${BORDA}`, borderRadius:12, padding:'1rem 1.2rem', marginBottom:8 }}
-                        onMouseEnter={e => e.currentTarget.style.borderColor = AMARELO}
-                        onMouseLeave={e => e.currentTarget.style.borderColor = BORDA}>
-                        {render(item)}
-                      </div>
-                    ))}
+                    {items.map(item => <div key={item.id} style={{ background:CARD, border:`1px solid ${BORDA}`, borderRadius:12, padding:'1rem 1.2rem', marginBottom:8 }} onMouseEnter={e => e.currentTarget.style.borderColor=AMARELO} onMouseLeave={e => e.currentTarget.style.borderColor=BORDA}>{render(item)}</div>)}
                   </div>
                 ))}
               </>)}
             </>
           )}
 
+          {/* CONTATOS */}
           {aba === 'contatos' && (
             <>
               <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16, flexWrap:'wrap', gap:12 }}>
-                <input type="text" placeholder="🔍 Buscar por nome ou cargo..." value={busca} onChange={e => setBusca(e.target.value)} style={{ ...inp, marginTop:0, flex:1, minWidth:200, maxWidth:400 }} />
+                <input type="text" placeholder="🔍 Buscar por nome ou cargo..." value={busca} onChange={e => setBusca(e.target.value)} style={{...inp, marginTop:0, flex:1, minWidth:200, maxWidth:400}} />
                 <button onClick={() => { setMostrarForm(true); setFormContato(VAZIO_CONTATO) }} style={{ background:AMARELO, color:'#000', border:'none', borderRadius:8, padding:'10px 16px', cursor:'pointer', fontWeight:700, fontSize:13 }}>+ Novo contato</button>
               </div>
               {mostrarForm && (
                 <div style={{ background:CARD, border:`1px solid ${BORDA}`, borderRadius:16, padding:'1.5rem', marginBottom:'1.5rem' }}>
-                  <h2 style={{ margin:'0 0 1rem', fontSize:15, fontWeight:700, color:AMARELO }}>{editandoContato ? '✏️ Editar contato' : '+ Novo contato'}</h2>
+                  <h2 style={{ margin:'0 0 1rem', fontSize:15, fontWeight:700, color:AMARELO }}>{editandoContato?'✏️ Editar contato':'+ Novo contato'}</h2>
                   <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12, marginBottom:12 }}>
                     <div><label style={{ fontSize:11, color:SUBTEXTO, fontWeight:700, textTransform:'uppercase' }}>Nome</label><input type="text" placeholder="Nome completo" value={formContato.nome} onChange={e => setFormContato({...formContato,nome:e.target.value})} style={inp} /></div>
                     <div><label style={{ fontSize:11, color:SUBTEXTO, fontWeight:700, textTransform:'uppercase' }}>Telefone</label><input type="text" placeholder="(xx) xxxxx-xxxx" value={formContato.telefone} onChange={e => setFormContato({...formContato,telefone:e.target.value})} style={inp} /></div>
                   </div>
                   <div style={{ marginBottom:16 }}><label style={{ fontSize:11, color:SUBTEXTO, fontWeight:700, textTransform:'uppercase' }}>Cargo / Função</label><input type="text" placeholder="Ex: Repórter, Editor..." value={formContato.cargo} onChange={e => setFormContato({...formContato,cargo:e.target.value})} style={inp} /></div>
                   <div style={{ display:'flex', gap:8 }}>
-                    <button onClick={salvarContato} style={{ background:AMARELO, color:'#000', border:'none', borderRadius:8, padding:'10px 20px', cursor:'pointer', fontWeight:700, fontSize:14 }}>{editandoContato ? 'Salvar edição' : 'Adicionar'}</button>
+                    <button onClick={salvarContato} style={{ background:AMARELO, color:'#000', border:'none', borderRadius:8, padding:'10px 20px', cursor:'pointer', fontWeight:700, fontSize:14 }}>{editandoContato?'Salvar edição':'Adicionar'}</button>
                     <button onClick={cancelar} style={{ background:'transparent', border:`1px solid ${BORDA}`, borderRadius:8, padding:'10px 20px', cursor:'pointer', color:SUBTEXTO, fontSize:14 }}>Cancelar</button>
                   </div>
                 </div>
@@ -506,15 +478,9 @@ export default function Home() {
               <p style={{ fontSize:12, color:SUBTEXTO, marginBottom:12 }}>{contatosFiltrados.length} contato(s)</p>
               <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(280px, 1fr))', gap:10 }}>
                 {contatosFiltrados.map(c => (
-                  <div key={c.id} style={{ background:CARD, border:`1px solid ${BORDA}`, borderRadius:12, padding:'1rem 1.2rem' }}
-                    onMouseEnter={e => e.currentTarget.style.borderColor = AMARELO}
-                    onMouseLeave={e => e.currentTarget.style.borderColor = BORDA}>
+                  <div key={c.id} style={{ background:CARD, border:`1px solid ${BORDA}`, borderRadius:12, padding:'1rem 1.2rem' }} onMouseEnter={e => e.currentTarget.style.borderColor=AMARELO} onMouseLeave={e => e.currentTarget.style.borderColor=BORDA}>
                     <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>
-                      <div>
-                        <p style={{ margin:0, fontWeight:700, fontSize:14 }}>{c.nome}</p>
-                        {c.cargo && <p style={{ margin:'3px 0 0', fontSize:12, color:SUBTEXTO }}>{c.cargo}</p>}
-                        <p style={{ margin:'6px 0 0', fontSize:13, color:AMARELO, fontWeight:600 }}>{c.telefone}</p>
-                      </div>
+                      <div><p style={{ margin:0, fontWeight:700, fontSize:14 }}>{c.nome}</p>{c.cargo&&<p style={{ margin:'3px 0 0', fontSize:12, color:SUBTEXTO }}>{c.cargo}</p>}<p style={{ margin:'6px 0 0', fontSize:13, color:AMARELO, fontWeight:600 }}>{c.telefone}</p></div>
                       <div style={{ display:'flex', flexDirection:'column', gap:6, marginLeft:8 }}>
                         <button onClick={() => editarContato(c)} style={{ background:'none', border:'none', color:AMARELO, cursor:'pointer', fontSize:12, fontWeight:600 }}>Editar</button>
                         <button onClick={() => deletarContato(c.id)} style={{ background:'none', border:'none', color:'#ff4444', cursor:'pointer', fontSize:12, fontWeight:600 }}>Deletar</button>
@@ -526,18 +492,16 @@ export default function Home() {
             </>
           )}
 
-          {aba !== 'contatos' && aba !== 'busca' && aba !== 'calendario' && mostrarForm && (
-            <div style={{ background:CARD, border:`1px solid ${BORDA}`, borderRadius:16, padding:'1.5rem', marginBottom:'1.5rem' }}>
-              <h2 style={{ margin:'0 0 1rem', fontSize:15, fontWeight:700, color:AMARELO }}>{(editandoPauta||editandoRel||editandoPrev)?'✏️ Editar':`+ ${aba==='pautas'?'Nova Pauta':aba==='relatorios'?'Novo Relatório':'Nova Previsão'}`}</h2>
+          {/* FORMULÁRIO */}
+          {hasSidebar && mostrarForm && (
+            <div style={{ background:CARD, border:`1px solid ${aba==='pedidos'?LARANJA:BORDA}`, borderRadius:16, padding:'1.5rem', marginBottom:'1.5rem' }}>
+              <h2 style={{ margin:'0 0 1rem', fontSize:15, fontWeight:700, color:corAba }}>
+                {(editandoPauta||editandoRel||editandoPrev||editandoPedido)?'✏️ Editar':`+ ${aba==='pautas'?'Nova Pauta':aba==='relatorios'?'Novo Relatório':aba==='previsoes'?'Nova Previsão':'Novo Pedido'}`}
+              </h2>
+
               {aba === 'pautas' && (<>
-                <FormDataPeriodo
-                  dataInicio={formPauta.data} dataFim={formPauta.dataFim}
-                  onChangeInicio={v => setFormPauta({...formPauta, data: v})}
-                  onChangeFim={v => setFormPauta({...formPauta, dataFim: v})}
-                />
-                <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12, marginBottom:12 }}>
-                  <div style={{ gridColumn:'1/-1' }}><label style={{ fontSize:11, color:SUBTEXTO, fontWeight:700, textTransform:'uppercase' }}>Repórter</label><input type="text" placeholder="Nome" value={formPauta.reporter} onChange={e => setFormPauta({...formPauta,reporter:e.target.value})} style={inp} /></div>
-                </div>
+                <FormDataPeriodo dataInicio={formPauta.data} dataFim={formPauta.dataFim} onChangeInicio={v => setFormPauta({...formPauta,data:v})} onChangeFim={v => setFormPauta({...formPauta,dataFim:v})} />
+                <div style={{ marginBottom:12 }}><label style={{ fontSize:11, color:SUBTEXTO, fontWeight:700, textTransform:'uppercase' }}>Repórter</label><input type="text" placeholder="Nome" value={formPauta.reporter} onChange={e => setFormPauta({...formPauta,reporter:e.target.value})} style={inp} /></div>
                 <div style={{ marginBottom:12 }}><label style={{ fontSize:11, color:SUBTEXTO, fontWeight:700, textTransform:'uppercase' }}>Título</label><input type="text" placeholder="Título resumido" value={formPauta.titulo} onChange={e => setFormPauta({...formPauta,titulo:e.target.value})} style={inp} /></div>
                 <div style={{ marginBottom:12 }}><label style={{ fontSize:11, color:SUBTEXTO, fontWeight:700, textTransform:'uppercase' }}>Pauta completa</label><textarea placeholder="Descreva a pauta..." value={formPauta.conteudo} onChange={e => setFormPauta({...formPauta,conteudo:e.target.value})} rows={5} style={{...inp,resize:'vertical',lineHeight:1.6}} /></div>
                 <div style={{ marginBottom:16 }}>
@@ -551,6 +515,7 @@ export default function Home() {
                   </div>
                 </div>
               </>)}
+
               {aba === 'relatorios' && (<>
                 <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12, marginBottom:12 }}>
                   <div><label style={{ fontSize:11, color:SUBTEXTO, fontWeight:700, textTransform:'uppercase' }}>Data</label><input type="date" value={formRel.data} onChange={e => setFormRel({...formRel,data:e.target.value})} style={{...inp,colorScheme:'dark'}} /></div>
@@ -558,42 +523,60 @@ export default function Home() {
                 </div>
                 <div style={{ marginBottom:16 }}><label style={{ fontSize:11, color:SUBTEXTO, fontWeight:700, textTransform:'uppercase' }}>Relatório</label><textarea placeholder="O que aconteceu hoje..." value={formRel.texto} onChange={e => setFormRel({...formRel,texto:e.target.value})} rows={3} style={{...inp,resize:'vertical',lineHeight:1.6}} /></div>
               </>)}
+
               {aba === 'previsoes' && (<>
-                <FormDataPeriodo
-                  dataInicio={formPrev.data} dataFim={formPrev.dataFim}
-                  onChangeInicio={v => setFormPrev({...formPrev, data: v})}
-                  onChangeFim={v => setFormPrev({...formPrev, dataFim: v})}
-                />
+                <FormDataPeriodo dataInicio={formPrev.data} dataFim={formPrev.dataFim} onChangeInicio={v => setFormPrev({...formPrev,data:v})} onChangeFim={v => setFormPrev({...formPrev,dataFim:v})} />
                 <div style={{ marginBottom:12 }}><label style={{ fontSize:11, color:SUBTEXTO, fontWeight:700, textTransform:'uppercase' }}>Título</label><input type="text" placeholder="Nome da pauta prevista" value={formPrev.titulo} onChange={e => setFormPrev({...formPrev,titulo:e.target.value})} style={inp} /></div>
                 <div style={{ marginBottom:16 }}><label style={{ fontSize:11, color:SUBTEXTO, fontWeight:700, textTransform:'uppercase' }}>Descrição</label><textarea placeholder="Detalhes sobre a previsão..." value={formPrev.descricao} onChange={e => setFormPrev({...formPrev,descricao:e.target.value})} rows={4} style={{...inp,resize:'vertical',lineHeight:1.6}} /></div>
               </>)}
+
+              {aba === 'pedidos' && (<>
+                <div style={{ marginBottom:12 }}><label style={{ fontSize:11, color:SUBTEXTO, fontWeight:700, textTransform:'uppercase' }}>Data</label><input type="date" value={formPedido.data} onChange={e => setFormPedido({...formPedido,data:e.target.value})} style={{...inp,colorScheme:'dark'}} /></div>
+                <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12, marginBottom:12 }}>
+                  <div><label style={{ fontSize:11, color:SUBTEXTO, fontWeight:700, textTransform:'uppercase' }}>Quem pediu</label><input type="text" placeholder="Seu nome" value={formPedido.quem} onChange={e => setFormPedido({...formPedido,quem:e.target.value})} style={inp} /></div>
+                  <div><label style={{ fontSize:11, color:SUBTEXTO, fontWeight:700, textTransform:'uppercase' }}>Repórter sugerido</label><input type="text" placeholder="Opcional" value={formPedido.reporter} onChange={e => setFormPedido({...formPedido,reporter:e.target.value})} style={inp} /></div>
+                </div>
+                <div style={{ marginBottom:12 }}><label style={{ fontSize:11, color:SUBTEXTO, fontWeight:700, textTransform:'uppercase' }}>Local / Cidade</label><input type="text" placeholder="Ex: Maracanã, Rio de Janeiro" value={formPedido.local} onChange={e => setFormPedido({...formPedido,local:e.target.value})} style={inp} /></div>
+                <div style={{ marginBottom:16 }}><label style={{ fontSize:11, color:SUBTEXTO, fontWeight:700, textTransform:'uppercase' }}>Descrição do pedido</label><textarea placeholder="Descreva o pedido de pauta..." value={formPedido.descricao} onChange={e => setFormPedido({...formPedido,descricao:e.target.value})} rows={4} style={{...inp,resize:'vertical',lineHeight:1.6}} /></div>
+              </>)}
+
               <div style={{ display:'flex', gap:8 }}>
-                <button onClick={aba==='pautas'?salvarPauta:aba==='relatorios'?salvarRelatorio:salvarPrevisao} disabled={uploadando} style={{ background:AMARELO, color:'#000', border:'none', borderRadius:8, padding:'10px 20px', cursor:'pointer', fontWeight:700, fontSize:14 }}>{(editandoPauta||editandoRel||editandoPrev)?'Salvar edição':'Adicionar'}</button>
+                <button onClick={aba==='pautas'?salvarPauta:aba==='relatorios'?salvarRelatorio:aba==='previsoes'?salvarPrevisao:salvarPedido} disabled={uploadando} style={{ background:corAba, color:aba==='pedidos'?'#fff':'#000', border:'none', borderRadius:8, padding:'10px 20px', cursor:'pointer', fontWeight:700, fontSize:14 }}>
+                  {(editandoPauta||editandoRel||editandoPrev||editandoPedido)?'Salvar edição':'Adicionar'}
+                </button>
                 <button onClick={cancelar} style={{ background:'transparent', border:`1px solid ${BORDA}`, borderRadius:8, padding:'10px 20px', cursor:'pointer', color:SUBTEXTO, fontSize:14 }}>Cancelar</button>
               </div>
             </div>
           )}
 
-          {aba !== 'contatos' && aba !== 'busca' && aba !== 'calendario' && dataSelecionada && !mostrarForm && (
+          {/* CABEÇALHO DO DIA */}
+          {hasSidebar && dataSelecionada && !mostrarForm && (
             <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16 }}>
               <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-                <div style={{ width:4, height:20, background:AMARELO, borderRadius:2 }} />
+                <div style={{ width:4, height:20, background:corAba, borderRadius:2 }} />
                 <h3 style={{ margin:0, fontSize:14, fontWeight:700, color:SUBTEXTO, textTransform:'uppercase', letterSpacing:0.8 }}>{formatarData(dataSelecionada)}</h3>
               </div>
-              <button onClick={() => { setMostrarForm(true); if(aba==='pautas') setFormPauta({...VAZIO_PAUTA,data:dataSelecionada}); else if(aba==='relatorios') setFormRel({...VAZIO_RELATORIO,data:dataSelecionada}); else setFormPrev({...VAZIO_PREVISAO,data:dataSelecionada}) }} style={{ background:AMARELO, color:'#000', border:'none', borderRadius:8, padding:'8px 16px', cursor:'pointer', fontWeight:700, fontSize:13 }}>
-                + {aba==='pautas'?'Nova pauta':aba==='relatorios'?'Novo relatório':'Nova previsão'}
+              <button onClick={() => {
+                setMostrarForm(true)
+                if(aba==='pautas') setFormPauta({...VAZIO_PAUTA,data:dataSelecionada})
+                else if(aba==='relatorios') setFormRel({...VAZIO_RELATORIO,data:dataSelecionada})
+                else if(aba==='previsoes') setFormPrev({...VAZIO_PREVISAO,data:dataSelecionada})
+                else setFormPedido({...VAZIO_PEDIDO,data:dataSelecionada})
+              }} style={{ background:corAba, color:aba==='pedidos'?'#fff':'#000', border:'none', borderRadius:8, padding:'8px 16px', cursor:'pointer', fontWeight:700, fontSize:13 }}>
+                + {aba==='pautas'?'Nova pauta':aba==='relatorios'?'Novo relatório':aba==='previsoes'?'Nova previsão':'Novo pedido'}
               </button>
             </div>
           )}
 
-          {aba !== 'contatos' && aba !== 'busca' && aba !== 'calendario' && dataSelecionada && !mostrarForm && (
+          {/* LISTA DO DIA */}
+          {hasSidebar && dataSelecionada && !mostrarForm && (
             <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
               {itensDoDia.length === 0 && <p style={{ color:SUBTEXTO, fontSize:14 }}>Nenhum registro para este dia.</p>}
+
               {aba === 'pautas' && itensDoDia.map(p => <CardPauta key={p.id} p={p} />)}
+
               {aba === 'relatorios' && itensDoDia.map(r => (
-                <div key={r.id} style={{ background:CARD, border:`1px solid ${BORDA}`, borderRadius:12, padding:'1rem 1.2rem' }}
-                  onMouseEnter={e => e.currentTarget.style.borderColor = AMARELO}
-                  onMouseLeave={e => e.currentTarget.style.borderColor = BORDA}>
+                <div key={r.id} style={{ background:CARD, border:`1px solid ${BORDA}`, borderRadius:12, padding:'1rem 1.2rem' }} onMouseEnter={e => e.currentTarget.style.borderColor=AMARELO} onMouseLeave={e => e.currentTarget.style.borderColor=BORDA}>
                   <div style={{ display:'flex', justifyContent:'space-between' }}>
                     <p style={{ margin:0, fontSize:13, color:SUBTEXTO }}>👤 {r.reporter}</p>
                     <div style={{ display:'flex', gap:12 }}>
@@ -604,34 +587,50 @@ export default function Home() {
                   <p style={{ margin:'8px 0 0', fontSize:14, color:'#ccc', whiteSpace:'pre-wrap', lineHeight:1.6 }}>{r.texto}</p>
                 </div>
               ))}
+
               {aba === 'previsoes' && itensDoDia.map(p => (
-                <div key={p.id} style={{ background:CARD, border:`1px solid ${BORDA}`, borderRadius:12, padding:'1rem 1.2rem' }}
-                  onMouseEnter={e => e.currentTarget.style.borderColor = AMARELO}
-                  onMouseLeave={e => e.currentTarget.style.borderColor = BORDA}>
+                <div key={p.id} style={{ background:CARD, border:`1px solid ${BORDA}`, borderRadius:12, padding:'1rem 1.2rem' }} onMouseEnter={e => e.currentTarget.style.borderColor=AMARELO} onMouseLeave={e => e.currentTarget.style.borderColor=BORDA}>
                   <div style={{ display:'flex', justifyContent:'space-between' }}>
-                    <div>
-                      <p style={{ margin:0, fontWeight:700, fontSize:15 }}>{p.titulo}</p>
-                      <PeriodoTag item={p} />
-                    </div>
+                    <div><p style={{ margin:0, fontWeight:700, fontSize:15 }}>{p.titulo}</p><PeriodoTag item={p} /></div>
                     <div style={{ display:'flex', gap:12 }}>
                       <button onClick={() => editarPrevisao(p)} style={{ background:'none', border:'none', color:AMARELO, cursor:'pointer', fontSize:13, fontWeight:600 }}>Editar</button>
                       <button onClick={() => deletarPrevisao(p.id)} style={{ background:'none', border:'none', color:'#ff4444', cursor:'pointer', fontSize:13, fontWeight:600 }}>Deletar</button>
                     </div>
                   </div>
-                  {p.descricao && <>
-                    <button onClick={() => setExpandido(expandido===p.id?null:p.id)} style={{ background:'none', border:'none', color:SUBTEXTO, cursor:'pointer', fontSize:12, padding:0, fontWeight:600, textTransform:'uppercase', letterSpacing:0.5, marginTop:8 }}>{expandido===p.id?'▲ Ocultar':'▼ Ver descrição'}</button>
-                    {expandido===p.id && <p style={{ marginTop:10, fontSize:14, color:'#ccc', whiteSpace:'pre-wrap', background:'#222', borderRadius:8, padding:'12px 14px', lineHeight:1.7, borderLeft:`3px solid ${AMARELO}` }}>{p.descricao}</p>}
-                  </>}
+                  {p.descricao && <><button onClick={() => setExpandido(expandido===p.id?null:p.id)} style={{ background:'none', border:'none', color:SUBTEXTO, cursor:'pointer', fontSize:12, padding:0, fontWeight:600, textTransform:'uppercase', letterSpacing:0.5, marginTop:8 }}>{expandido===p.id?'▲ Ocultar':'▼ Ver descrição'}</button>{expandido===p.id && <p style={{ marginTop:10, fontSize:14, color:'#ccc', whiteSpace:'pre-wrap', background:'#222', borderRadius:8, padding:'12px 14px', lineHeight:1.7, borderLeft:`3px solid ${AMARELO}` }}>{p.descricao}</p>}</>}
+                </div>
+              ))}
+
+              {aba === 'pedidos' && itensDoDia.map(p => (
+                <div key={p.id} style={{ background:CARD, border:`1px solid ${LARANJA}`, borderRadius:12, padding:'1rem 1.2rem' }}>
+                  <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>
+                    <div style={{ flex:1 }}>
+                      <span style={{ display:'inline-block', background:'#2A1A00', color:LARANJA, border:`0.5px solid ${LARANJA}`, borderRadius:20, padding:'2px 10px', fontSize:10, fontWeight:700, marginBottom:8 }}>⏳ Aguardando aprovação</span>
+                      <p style={{ margin:0, fontWeight:700, fontSize:15 }}>{p.descricao}</p>
+                      <div style={{ marginTop:6, display:'flex', flexDirection:'column', gap:3 }}>
+                        <p style={{ margin:0, fontSize:13, color:SUBTEXTO }}>👤 Pedido por: {p.quem}</p>
+                        {p.reporter && <p style={{ margin:0, fontSize:13, color:SUBTEXTO }}>🎙️ Repórter sugerido: {p.reporter}</p>}
+                        {p.local && <p style={{ margin:0, fontSize:13, color:SUBTEXTO }}>📍 {p.local}</p>}
+                      </div>
+                    </div>
+                    <div style={{ display:'flex', gap:10, marginLeft:12, flexShrink:0 }}>
+                      <button onClick={() => editarPedido(p)} style={{ background:'none', border:'none', color:LARANJA, cursor:'pointer', fontSize:13, fontWeight:600 }}>Editar</button>
+                      <button onClick={() => deletarPedido(p.id)} style={{ background:'none', border:'none', color:'#ff4444', cursor:'pointer', fontSize:13, fontWeight:600 }}>Deletar</button>
+                    </div>
+                  </div>
+                  <button onClick={() => converterEmPauta(p)} style={{ marginTop:12, background:AMARELO, color:'#000', border:'none', borderRadius:8, padding:'8px 16px', cursor:'pointer', fontWeight:700, fontSize:13 }}>
+                    ✅ Converter em pauta
+                  </button>
                 </div>
               ))}
             </div>
           )}
 
-          {aba !== 'contatos' && aba !== 'busca' && aba !== 'calendario' && !dataSelecionada && !mostrarForm && (
+          {hasSidebar && !dataSelecionada && !mostrarForm && (
             <div style={{ display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', height:300, gap:12 }}>
               <p style={{ color:SUBTEXTO, fontSize:14 }}>Selecione uma data na lateral ou crie um novo registro.</p>
-              <button onClick={() => setMostrarForm(true)} style={{ background:AMARELO, color:'#000', border:'none', borderRadius:8, padding:'10px 20px', cursor:'pointer', fontWeight:700, fontSize:14 }}>
-                + {aba==='pautas'?'Nova pauta':aba==='relatorios'?'Novo relatório':'Nova previsão'}
+              <button onClick={() => setMostrarForm(true)} style={{ background:corAba, color:aba==='pedidos'?'#fff':'#000', border:'none', borderRadius:8, padding:'10px 20px', cursor:'pointer', fontWeight:700, fontSize:14 }}>
+                + {aba==='pautas'?'Nova pauta':aba==='relatorios'?'Novo relatório':aba==='previsoes'?'Nova previsão':'Novo pedido'}
               </button>
             </div>
           )}
