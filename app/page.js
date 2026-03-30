@@ -382,6 +382,16 @@ export default function Home() {
 
   useEffect(() => { carregarTudo() }, [])
 
+  // Ao trocar de aba, seleciona a data mais próxima de hoje automaticamente
+  useEffect(() => {
+    if (!hasSidebar) return
+    if (datas.length === 0) return
+    const hoje = new Date().toISOString().split('T')[0]
+    // Pega a data mais próxima de hoje (preferindo a mais recente que não passou)
+    const futura = datas.find(d => d >= hoje)
+    setDataSelecionada(futura || datas[datas.length - 1])
+  }, [aba, pautas, relatorios, previsoes, pedidos])
+
   async function carregarTudo() {
     setLoading(true)
     const [rP, rR, rPrev, rC, rPed, rM] = await Promise.all([
@@ -518,8 +528,8 @@ export default function Home() {
     { id:'metricas', label:'📊 Métricas', cor:AMARELO },
   ]
 
-  const corAba = aba==='pedidos'?LARANJA:AMARELO
   const hasSidebar = !['contatos','busca','calendario','metricas'].includes(aba)
+  const corAba = aba==='pedidos'?LARANJA:AMARELO
 
   function PeriodoTag({ item }) {
     if (!item.dataFim||item.dataFim===item.data) return null
@@ -567,7 +577,7 @@ export default function Home() {
   }
 
   // ─── EMPTY STATE: mostrado quando não tem data selecionada ────────────────
-  const labelAba = aba==='pautas'?'pauta':aba==='relatorios'?'relatório':aba==='previsoes'?'previsão':'pedido'
+  const labelAba = aba==='pautas'?'pauta selecionada':aba==='relatorios'?'relatório selecionado':aba==='previsoes'?'previsão selecionada':'pedido selecionado'
   const labelAbaPlural = aba==='pautas'?'pautas':aba==='relatorios'?'relatórios':aba==='previsoes'?'previsões':'pedidos'
   const iconeAba = aba==='pautas'?'📋':aba==='relatorios'?'📝':aba==='previsoes'?'🔭':'📥'
 
@@ -584,7 +594,7 @@ export default function Home() {
         }}>{iconeAba}</div>
         <div>
           <p style={{ margin:0, fontSize:16, fontWeight:700, color:TEXTO }}>
-            Nenhuma {labelAba} selecionada
+            Nenhum {labelAba}
           </p>
           <p style={{ margin:'6px 0 0', fontSize:13, color:SUBTEXTO, maxWidth:280, lineHeight:1.6 }}>
             Escolha uma data na lateral para ver os {labelAbaPlural}, ou crie um novo registro.
@@ -603,7 +613,7 @@ export default function Home() {
         </button>
         {datas.length > 0 && (
           <p style={{ margin:0, fontSize:12, color:'#444' }}>
-            {datas.length} data(s) com {labelAbaPlural} cadastradas
+            {datas.length} {datas.length === 1 ? 'data' : 'datas'} com {labelAbaPlural} cadastrados
           </p>
         )}
       </div>
