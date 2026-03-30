@@ -566,47 +566,122 @@ export default function Home() {
     )
   }
 
+  // ─── EMPTY STATE: mostrado quando não tem data selecionada ────────────────
+  const labelAba = aba==='pautas'?'pauta':aba==='relatorios'?'relatório':aba==='previsoes'?'previsão':'pedido'
+  const labelAbaPlural = aba==='pautas'?'pautas':aba==='relatorios'?'relatórios':aba==='previsoes'?'previsões':'pedidos'
+  const iconeAba = aba==='pautas'?'📋':aba==='relatorios'?'📝':aba==='previsoes'?'🔭':'📥'
+
+  function EmptyState() {
+    return (
+      <div style={{
+        display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center',
+        flex:1, minHeight:0, padding:'3rem 2rem', gap:20, textAlign:'center',
+      }}>
+        <div style={{
+          width:72, height:72, borderRadius:20,
+          background:'#1E1E1E', border:`1.5px dashed ${BORDA}`,
+          display:'flex', alignItems:'center', justifyContent:'center', fontSize:32,
+        }}>{iconeAba}</div>
+        <div>
+          <p style={{ margin:0, fontSize:16, fontWeight:700, color:TEXTO }}>
+            Nenhuma {labelAba} selecionada
+          </p>
+          <p style={{ margin:'6px 0 0', fontSize:13, color:SUBTEXTO, maxWidth:280, lineHeight:1.6 }}>
+            Escolha uma data na lateral para ver os {labelAbaPlural}, ou crie um novo registro.
+          </p>
+        </div>
+        <button
+          onClick={() => setMostrarForm(true)}
+          style={{
+            background:corAba, color:aba==='pedidos'?'#fff':'#000',
+            border:'none', borderRadius:10, padding:'11px 24px',
+            cursor:'pointer', fontWeight:700, fontSize:14,
+            boxShadow:`0 0 20px ${corAba}33`,
+          }}
+        >
+          + {aba==='pautas'?'Nova pauta':aba==='relatorios'?'Novo relatório':aba==='previsoes'?'Nova previsão':'Novo pedido'}
+        </button>
+        {datas.length > 0 && (
+          <p style={{ margin:0, fontSize:12, color:'#444' }}>
+            {datas.length} data(s) com {labelAbaPlural} cadastradas
+          </p>
+        )}
+      </div>
+    )
+  }
+  // ─────────────────────────────────────────────────────────────────────────
+
   return (
     <main style={{ minHeight:'100vh', background:ESCURO, color:TEXTO, fontFamily:"'Inter','Helvetica Neue',sans-serif", display:'flex', flexDirection:'column' }}>
-      <header style={{ background:'#000', borderBottom:`3px solid ${AMARELO}`, padding:'1rem 1.5rem', display:'flex', alignItems:'center', gap:12, flexShrink:0 }}>
-        <span style={{ background:AMARELO, color:'#000', fontWeight:900, fontSize:18, padding:'4px 10px', borderRadius:6 }}>CazéTV</span>
-        <span style={{ fontWeight:700, fontSize:18 }}>PAUTAS & RELATÓRIOS</span>
+
+      {/* HEADER */}
+      <header style={{ background:'#000', borderBottom:`3px solid ${AMARELO}`, padding:'0.85rem 1.5rem', display:'flex', alignItems:'center', gap:14, flexShrink:0 }}>
+        <span style={{ background:AMARELO, color:'#000', fontWeight:900, fontSize:17, padding:'5px 11px', borderRadius:7, letterSpacing:-0.5 }}>CazéTV</span>
+        <span style={{ fontWeight:700, fontSize:16, color:TEXTO, letterSpacing:0.3 }}>PAUTAS & RELATÓRIOS</span>
       </header>
 
-      <div style={{ display:'flex', gap:4, padding:'8px 12px', background:CARD, borderBottom:`1px solid ${BORDA}`, flexShrink:0, flexWrap:'wrap' }}>
+      {/* ABAS */}
+      <div style={{ display:'flex', gap:2, padding:'6px 10px', background:'#0A0A0A', borderBottom:`1px solid ${BORDA}`, flexShrink:0, flexWrap:'wrap' }}>
         {abas.map(a => (
           <button key={a.id} onClick={() => { setAba(a.id); setDataSelecionada(null); setMostrarForm(false); setBusca(''); setBuscaGeral('') }} style={{
-            padding:'8px 20px', border:'none', borderRadius:8, cursor:'pointer', fontWeight:700, fontSize:14,
-            background:aba===a.id?a.cor:'transparent',
-            color:aba===a.id?(a.id==='pedidos'?'#fff':'#000'):SUBTEXTO,
+            padding:'7px 16px', border:'none', borderRadius:7, cursor:'pointer', fontWeight:700, fontSize:13,
+            background: aba===a.id ? a.cor : 'transparent',
+            color: aba===a.id ? (a.id==='pedidos'?'#fff':'#000') : SUBTEXTO,
+            transition:'all 0.15s',
           }}>{a.label}</button>
         ))}
       </div>
 
+      {/* BODY */}
       <div style={{ display:'flex', flex:1, overflow:'hidden', minHeight:0 }}>
+
+        {/* SIDEBAR — largura fixa, compacta */}
         {hasSidebar && (
-          <aside style={{ width:'35%', flexShrink:0, borderRight:`1px solid ${BORDA}`, padding:'12px 8px', overflowY:'auto', display:'flex', flexDirection:'column', gap:4 }}>
-            <p style={{ fontSize:10, color:SUBTEXTO, fontWeight:700, textTransform:'uppercase', letterSpacing:1, padding:'0 6px', marginBottom:4 }}>Datas</p>
-            {loading&&<p style={{ fontSize:12, color:SUBTEXTO, padding:'0 6px' }}>Carregando...</p>}
-            {!loading&&datas.length===0&&<p style={{ fontSize:12, color:SUBTEXTO, padding:'0 6px' }}>Nenhum registro.</p>}
+          <aside style={{
+            width:220, flexShrink:0,
+            borderRight:`1px solid ${BORDA}`,
+            padding:'12px 8px',
+            overflowY:'auto',
+            display:'flex', flexDirection:'column', gap:4,
+            background:'#0D0D0D',
+          }}>
+            <p style={{ fontSize:10, color:SUBTEXTO, fontWeight:700, textTransform:'uppercase', letterSpacing:1, padding:'0 6px', margin:'0 0 6px' }}>Datas</p>
+            {loading && (
+              <div style={{ padding:'0 6px', display:'flex', flexDirection:'column', gap:6 }}>
+                {[1,2,3].map(i => <div key={i} style={{ height:44, background:CARD, borderRadius:8, opacity:0.5 }} />)}
+              </div>
+            )}
+            {!loading && datas.length === 0 && (
+              <div style={{ padding:'1.5rem 6px', textAlign:'center' }}>
+                <p style={{ fontSize:12, color:SUBTEXTO, margin:0, lineHeight:1.6 }}>Nenhum registro ainda.</p>
+              </div>
+            )}
             {datas.map(d => {
               const count = aba==='pautas'?getItensDoDia(pautas,d).length:aba==='relatorios'?getItensDoDia(relatorios,d).length:aba==='previsoes'?getItensDoDia(previsoes,d).length:pedidos.filter(p=>p.data===d).length
               const isActive = dataSelecionada===d
               return (
                 <button key={d} onClick={() => { setDataSelecionada(d); setMostrarForm(false) }} style={{
-                  width:'100%', textAlign:'left', border:'none', borderRadius:8, padding:'10px 12px', cursor:'pointer',
-                  background:isActive?corAba:CARD, color:isActive?(aba==='pedidos'?'#fff':'#000'):TEXTO,
-                  outline:isActive?'none':`1px solid ${BORDA}`,
+                  width:'100%', textAlign:'left', border:'none', borderRadius:8, padding:'9px 12px', cursor:'pointer',
+                  background: isActive ? corAba : CARD,
+                  color: isActive ? (aba==='pedidos'?'#fff':'#000') : TEXTO,
+                  outline: isActive ? 'none' : `1px solid ${BORDA}`,
+                  transition:'all 0.1s',
                 }}>
                   <span style={{ display:'block', fontSize:13, fontWeight:700 }}>{formatarDataCurta(d)}</span>
-                  <span style={{ display:'block', fontSize:11, opacity:0.7, marginTop:2 }}>{count} {aba==='pautas'?'pauta(s)':aba==='relatorios'?'relatório(s)':aba==='previsoes'?'previsão(ões)':'pedido(s)'}</span>
+                  <span style={{ display:'block', fontSize:11, opacity:0.65, marginTop:2 }}>
+                    {count} {aba==='pautas'?'pauta(s)':aba==='relatorios'?'relatório(s)':aba==='previsoes'?'previsão(ões)':'pedido(s)'}
+                  </span>
                 </button>
               )
             })}
-            <button onClick={() => { setMostrarForm(true); setDataSelecionada(null); cancelar() }} style={{ marginTop:8, width:'100%', padding:'6px 0', background:'transparent', border:`1px dashed ${BORDA}`, borderRadius:8, color:'#444', fontSize:11, cursor:'pointer' }}>+ nova data</button>
+            <button
+              onClick={() => { setMostrarForm(true); setDataSelecionada(null); cancelar() }}
+              style={{ marginTop:8, width:'100%', padding:'7px 0', background:'transparent', border:`1px dashed #333`, borderRadius:8, color:'#555', fontSize:11, cursor:'pointer' }}
+            >+ nova data</button>
           </aside>
         )}
 
+        {/* MÉTRICAS */}
         {aba === 'metricas' && (
           <AbaMetricas
             metricas={metricas}
@@ -617,208 +692,211 @@ export default function Home() {
           />
         )}
 
+        {/* SEÇÃO PRINCIPAL */}
         {aba !== 'metricas' && (
-        <section style={{ flex:1, overflowY:'auto', padding:'1.5rem' }}>
-          {aba==='calendario' && (
-            <>
-              <Calendario pautas={pautas} relatorios={relatorios} previsoes={previsoes} pedidos={pedidos} onDiaClick={setDiaModal}/>
-              {diaModal && (
-                <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.7)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:1000 }} onClick={() => setDiaModal(null)}>
-                  <div style={{ background:'#1A1A1A', border:`1px solid ${BORDA}`, borderRadius:16, padding:'1.5rem', maxWidth:500, width:'90%', maxHeight:'80vh', overflowY:'auto' }} onClick={e => e.stopPropagation()}>
-                    <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16 }}>
-                      <h3 style={{ margin:0, fontSize:15, fontWeight:700, color:AMARELO }}>{formatarData(diaModal.str)}</h3>
-                      <button onClick={() => setDiaModal(null)} style={{ background:'none', border:'none', color:SUBTEXTO, cursor:'pointer', fontSize:18 }}>✕</button>
+          <section style={{ flex:1, overflowY:'auto', padding:'1.5rem', display:'flex', flexDirection:'column' }}>
+
+            {/* CALENDÁRIO */}
+            {aba==='calendario' && (
+              <>
+                <Calendario pautas={pautas} relatorios={relatorios} previsoes={previsoes} pedidos={pedidos} onDiaClick={setDiaModal}/>
+                {diaModal && (
+                  <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.7)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:1000 }} onClick={() => setDiaModal(null)}>
+                    <div style={{ background:'#1A1A1A', border:`1px solid ${BORDA}`, borderRadius:16, padding:'1.5rem', maxWidth:500, width:'90%', maxHeight:'80vh', overflowY:'auto' }} onClick={e => e.stopPropagation()}>
+                      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16 }}>
+                        <h3 style={{ margin:0, fontSize:15, fontWeight:700, color:AMARELO }}>{formatarData(diaModal.str)}</h3>
+                        <button onClick={() => setDiaModal(null)} style={{ background:'none', border:'none', color:SUBTEXTO, cursor:'pointer', fontSize:18 }}>✕</button>
+                      </div>
+                      {diaModal.pautas?.length>0&&<><p style={{ fontSize:11, fontWeight:700, color:SUBTEXTO, textTransform:'uppercase', letterSpacing:1, marginBottom:8 }}>📋 Pautas</p>{diaModal.pautas.map(p=><div key={p.id} style={{ background:'#222', borderRadius:10, padding:'10px 14px', marginBottom:8 }}><p style={{ margin:0, fontWeight:700, fontSize:14 }}>{p.titulo}</p><p style={{ margin:'4px 0 0', fontSize:12, color:SUBTEXTO }}>👤 {p.reporter}</p>{p.conteudo&&<p style={{ margin:'8px 0 0', fontSize:13, color:'#aaa', lineHeight:1.5, whiteSpace:'pre-wrap' }}>{p.conteudo}</p>}<div style={{ marginTop:10 }}><button onClick={() => enviarWhatsApp(p)} style={{ background:'#25D366', color:'#fff', border:'none', borderRadius:6, padding:'5px 10px', cursor:'pointer', fontSize:12, fontWeight:700 }}>📲 WhatsApp</button></div></div>)}</>}
+                      {diaModal.pedidos?.length>0&&<><p style={{ fontSize:11, fontWeight:700, color:LARANJA, textTransform:'uppercase', letterSpacing:1, marginBottom:8, marginTop:12 }}>📥 Pedidos</p>{diaModal.pedidos.map(p=><div key={p.id} style={{ background:'#222', border:`0.5px solid ${LARANJA}`, borderRadius:10, padding:'10px 14px', marginBottom:8 }}><p style={{ margin:0, fontWeight:700, fontSize:14 }}>{p.descricao}</p><p style={{ margin:'4px 0 0', fontSize:12, color:SUBTEXTO }}>👤 {p.quem}{p.reporter&&` · 🎙️ ${p.reporter}`}{p.local&&` · 📍 ${p.local}`}</p><button onClick={() => { converterEmPauta(p); setDiaModal(null) }} style={{ marginTop:10, background:AMARELO, color:'#000', border:'none', borderRadius:6, padding:'5px 10px', cursor:'pointer', fontSize:12, fontWeight:700 }}>✅ Converter em pauta</button></div>)}</>}
+                      {diaModal.relatorios?.length>0&&<><p style={{ fontSize:11, fontWeight:700, color:SUBTEXTO, textTransform:'uppercase', letterSpacing:1, marginBottom:8, marginTop:12 }}>📝 Relatórios</p>{diaModal.relatorios.map(r=><div key={r.id} style={{ background:'#222', borderRadius:10, padding:'10px 14px', marginBottom:8 }}><p style={{ margin:0, fontSize:12, color:SUBTEXTO }}>👤 {r.reporter}</p><p style={{ margin:'8px 0 0', fontSize:13, color:'#aaa', whiteSpace:'pre-wrap', lineHeight:1.5 }}>{r.texto}</p></div>)}</>}
+                      {diaModal.previsoes?.length>0&&<><p style={{ fontSize:11, fontWeight:700, color:SUBTEXTO, textTransform:'uppercase', letterSpacing:1, marginBottom:8, marginTop:12 }}>🔭 Previsões</p>{diaModal.previsoes.map(p=><div key={p.id} style={{ background:'#222', borderRadius:10, padding:'10px 14px', marginBottom:8 }}><p style={{ margin:0, fontWeight:700, fontSize:14 }}>{p.titulo}</p>{p.descricao&&<p style={{ margin:'8px 0 0', fontSize:13, color:'#aaa', whiteSpace:'pre-wrap', lineHeight:1.5 }}>{p.descricao}</p>}</div>)}</>}
                     </div>
-                    {diaModal.pautas?.length>0&&<><p style={{ fontSize:11, fontWeight:700, color:SUBTEXTO, textTransform:'uppercase', letterSpacing:1, marginBottom:8 }}>📋 Pautas</p>{diaModal.pautas.map(p=><div key={p.id} style={{ background:'#222', borderRadius:10, padding:'10px 14px', marginBottom:8 }}><p style={{ margin:0, fontWeight:700, fontSize:14 }}>{p.titulo}</p><p style={{ margin:'4px 0 0', fontSize:12, color:SUBTEXTO }}>👤 {p.reporter}</p>{p.conteudo&&<p style={{ margin:'8px 0 0', fontSize:13, color:'#aaa', lineHeight:1.5, whiteSpace:'pre-wrap' }}>{p.conteudo}</p>}<div style={{ marginTop:10 }}><button onClick={() => enviarWhatsApp(p)} style={{ background:'#25D366', color:'#fff', border:'none', borderRadius:6, padding:'5px 10px', cursor:'pointer', fontSize:12, fontWeight:700 }}>📲 WhatsApp</button></div></div>)}</>}
-                    {diaModal.pedidos?.length>0&&<><p style={{ fontSize:11, fontWeight:700, color:LARANJA, textTransform:'uppercase', letterSpacing:1, marginBottom:8, marginTop:12 }}>📥 Pedidos</p>{diaModal.pedidos.map(p=><div key={p.id} style={{ background:'#222', border:`0.5px solid ${LARANJA}`, borderRadius:10, padding:'10px 14px', marginBottom:8 }}><p style={{ margin:0, fontWeight:700, fontSize:14 }}>{p.descricao}</p><p style={{ margin:'4px 0 0', fontSize:12, color:SUBTEXTO }}>👤 {p.quem}{p.reporter&&` · 🎙️ ${p.reporter}`}{p.local&&` · 📍 ${p.local}`}</p><button onClick={() => { converterEmPauta(p); setDiaModal(null) }} style={{ marginTop:10, background:AMARELO, color:'#000', border:'none', borderRadius:6, padding:'5px 10px', cursor:'pointer', fontSize:12, fontWeight:700 }}>✅ Converter em pauta</button></div>)}</>}
-                    {diaModal.relatorios?.length>0&&<><p style={{ fontSize:11, fontWeight:700, color:SUBTEXTO, textTransform:'uppercase', letterSpacing:1, marginBottom:8, marginTop:12 }}>📝 Relatórios</p>{diaModal.relatorios.map(r=><div key={r.id} style={{ background:'#222', borderRadius:10, padding:'10px 14px', marginBottom:8 }}><p style={{ margin:0, fontSize:12, color:SUBTEXTO }}>👤 {r.reporter}</p><p style={{ margin:'8px 0 0', fontSize:13, color:'#aaa', whiteSpace:'pre-wrap', lineHeight:1.5 }}>{r.texto}</p></div>)}</>}
-                    {diaModal.previsoes?.length>0&&<><p style={{ fontSize:11, fontWeight:700, color:SUBTEXTO, textTransform:'uppercase', letterSpacing:1, marginBottom:8, marginTop:12 }}>🔭 Previsões</p>{diaModal.previsoes.map(p=><div key={p.id} style={{ background:'#222', borderRadius:10, padding:'10px 14px', marginBottom:8 }}><p style={{ margin:0, fontWeight:700, fontSize:14 }}>{p.titulo}</p>{p.descricao&&<p style={{ margin:'8px 0 0', fontSize:13, color:'#aaa', whiteSpace:'pre-wrap', lineHeight:1.5 }}>{p.descricao}</p>}</div>)}</>}
                   </div>
+                )}
+              </>
+            )}
+
+            {/* BUSCA */}
+            {aba==='busca' && (
+              <>
+                <input type="text" placeholder="🔍 Digite uma palavra para buscar..." value={buscaGeral} onChange={e => setBuscaGeral(e.target.value)} autoFocus style={{...inp,marginTop:0,marginBottom:'1.5rem',fontSize:15}}/>
+                {!buscaGeral&&<p style={{ color:SUBTEXTO, fontSize:14, textAlign:'center', padding:'3rem 0' }}>Digite algo para começar a busca.</p>}
+                {buscaGeral&&(<>
+                  {[
+                    {label:'Pautas',items:pautasEncontradas,render:p=><><p style={{ margin:0, fontWeight:700, fontSize:14 }}><Highlight text={p.titulo} busca={buscaGeral}/></p><p style={{ margin:'4px 0 0', fontSize:12, color:SUBTEXTO }}>👤 <Highlight text={p.reporter} busca={buscaGeral}/> · 📅 {formatarDataSimples(p.data)}{p.dataFim&&p.dataFim!==p.data?` → ${formatarDataSimples(p.dataFim)}`:''}</p>{p.conteudo&&<p style={{ margin:'8px 0 0', fontSize:13, color:'#aaa', lineHeight:1.5 }}><Highlight text={p.conteudo.slice(0,150)+(p.conteudo.length>150?'..':'')} busca={buscaGeral}/></p>}</>},
+                    {label:'Relatórios',items:relatoriosEncontrados,render:r=><><p style={{ margin:0, fontSize:12, color:SUBTEXTO }}>👤 <Highlight text={r.reporter} busca={buscaGeral}/> · 📅 {formatarDataCurta(r.data)}</p><p style={{ margin:'8px 0 0', fontSize:13, color:'#aaa', lineHeight:1.5 }}><Highlight text={r.texto.slice(0,150)+(r.texto.length>150?'..':'')} busca={buscaGeral}/></p></>},
+                    {label:'Previsões',items:previsoesEncontradas,render:p=><><p style={{ margin:0, fontWeight:700, fontSize:14 }}><Highlight text={p.titulo} busca={buscaGeral}/></p><p style={{ margin:'4px 0 0', fontSize:12, color:SUBTEXTO }}>📅 {formatarDataSimples(p.data)}{p.dataFim&&p.dataFim!==p.data?` → ${formatarDataSimples(p.dataFim)}`:''}</p>{p.descricao&&<p style={{ margin:'8px 0 0', fontSize:13, color:'#aaa', lineHeight:1.5 }}><Highlight text={p.descricao.slice(0,150)+(p.descricao.length>150?'..':'')} busca={buscaGeral}/></p>}</>},
+                  ].map(({label,items,render}) => (
+                    <div key={label} style={{ marginBottom:'1.5rem' }}>
+                      <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:10 }}>
+                        <div style={{ width:4, height:16, background:AMARELO, borderRadius:2 }}/>
+                        <span style={{ fontSize:12, fontWeight:700, color:SUBTEXTO, textTransform:'uppercase', letterSpacing:1 }}>{label}</span>
+                        <span style={{ fontSize:11, color:'#555', marginLeft:4 }}>{items.length} resultado(s)</span>
+                      </div>
+                      {items.length===0&&<p style={{ color:SUBTEXTO, fontSize:13 }}>Nenhum resultado.</p>}
+                      {items.map(item=><div key={item.id} style={{ background:CARD, border:`1px solid ${BORDA}`, borderRadius:12, padding:'1rem 1.2rem', marginBottom:8 }} onMouseEnter={e=>e.currentTarget.style.borderColor=AMARELO} onMouseLeave={e=>e.currentTarget.style.borderColor=BORDA}>{render(item)}</div>)}
+                    </div>
+                  ))}
+                </>)}
+              </>
+            )}
+
+            {/* CONTATOS */}
+            {aba==='contatos' && (
+              <>
+                <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16, flexWrap:'wrap', gap:12 }}>
+                  <input type="text" placeholder="🔍 Buscar por nome ou cargo..." value={busca} onChange={e => setBusca(e.target.value)} style={{...inp,marginTop:0,flex:1,minWidth:200,maxWidth:400}}/>
+                  <button onClick={() => { setMostrarForm(true); setFormContato(VAZIO_CONTATO) }} style={{ background:AMARELO, color:'#000', border:'none', borderRadius:8, padding:'10px 16px', cursor:'pointer', fontWeight:700, fontSize:13 }}>+ Novo contato</button>
                 </div>
-              )}
-            </>
-          )}
-
-          {aba==='busca' && (
-            <>
-              <input type="text" placeholder="🔍 Digite uma palavra para buscar..." value={buscaGeral} onChange={e => setBuscaGeral(e.target.value)} autoFocus style={{...inp,marginTop:0,marginBottom:'1.5rem',fontSize:15}}/>
-              {!buscaGeral&&<p style={{ color:SUBTEXTO, fontSize:14, textAlign:'center', padding:'3rem 0' }}>Digite algo para começar a busca.</p>}
-              {buscaGeral&&(<>
-                {[
-                  {label:'Pautas',items:pautasEncontradas,render:p=><><p style={{ margin:0, fontWeight:700, fontSize:14 }}><Highlight text={p.titulo} busca={buscaGeral}/></p><p style={{ margin:'4px 0 0', fontSize:12, color:SUBTEXTO }}>👤 <Highlight text={p.reporter} busca={buscaGeral}/> · 📅 {formatarDataSimples(p.data)}{p.dataFim&&p.dataFim!==p.data?` → ${formatarDataSimples(p.dataFim)}`:''}</p>{p.conteudo&&<p style={{ margin:'8px 0 0', fontSize:13, color:'#aaa', lineHeight:1.5 }}><Highlight text={p.conteudo.slice(0,150)+(p.conteudo.length>150?'..':'')} busca={buscaGeral}/></p>}</>},
-                  {label:'Relatórios',items:relatoriosEncontrados,render:r=><><p style={{ margin:0, fontSize:12, color:SUBTEXTO }}>👤 <Highlight text={r.reporter} busca={buscaGeral}/> · 📅 {formatarDataCurta(r.data)}</p><p style={{ margin:'8px 0 0', fontSize:13, color:'#aaa', lineHeight:1.5 }}><Highlight text={r.texto.slice(0,150)+(r.texto.length>150?'..':'')} busca={buscaGeral}/></p></>},
-                  {label:'Previsões',items:previsoesEncontradas,render:p=><><p style={{ margin:0, fontWeight:700, fontSize:14 }}><Highlight text={p.titulo} busca={buscaGeral}/></p><p style={{ margin:'4px 0 0', fontSize:12, color:SUBTEXTO }}>📅 {formatarDataSimples(p.data)}{p.dataFim&&p.dataFim!==p.data?` → ${formatarDataSimples(p.dataFim)}`:''}</p>{p.descricao&&<p style={{ margin:'8px 0 0', fontSize:13, color:'#aaa', lineHeight:1.5 }}><Highlight text={p.descricao.slice(0,150)+(p.descricao.length>150?'..':'')} busca={buscaGeral}/></p>}</>},
-                ].map(({label,items,render}) => (
-                  <div key={label} style={{ marginBottom:'1.5rem' }}>
-                    <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:10 }}>
-                      <div style={{ width:4, height:16, background:AMARELO, borderRadius:2 }}/>
-                      <span style={{ fontSize:12, fontWeight:700, color:SUBTEXTO, textTransform:'uppercase', letterSpacing:1 }}>{label}</span>
-                      <span style={{ fontSize:11, color:'#555', marginLeft:4 }}>{items.length} resultado(s)</span>
+                {mostrarForm&&(
+                  <div style={{ background:CARD, border:`1px solid ${BORDA}`, borderRadius:16, padding:'1.5rem', marginBottom:'1.5rem' }}>
+                    <h2 style={{ margin:'0 0 1rem', fontSize:15, fontWeight:700, color:AMARELO }}>{editandoContato?'✏️ Editar contato':'+ Novo contato'}</h2>
+                    <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12, marginBottom:12 }}>
+                      <div><label style={{ fontSize:11, color:SUBTEXTO, fontWeight:700, textTransform:'uppercase' }}>Nome</label><input type="text" placeholder="Nome completo" value={formContato.nome} onChange={e=>setFormContato({...formContato,nome:e.target.value})} style={inp}/></div>
+                      <div><label style={{ fontSize:11, color:SUBTEXTO, fontWeight:700, textTransform:'uppercase' }}>Telefone</label><input type="text" placeholder="(xx) xxxxx-xxxx" value={formContato.telefone} onChange={e=>setFormContato({...formContato,telefone:e.target.value})} style={inp}/></div>
                     </div>
-                    {items.length===0&&<p style={{ color:SUBTEXTO, fontSize:13 }}>Nenhum resultado.</p>}
-                    {items.map(item=><div key={item.id} style={{ background:CARD, border:`1px solid ${BORDA}`, borderRadius:12, padding:'1rem 1.2rem', marginBottom:8 }} onMouseEnter={e=>e.currentTarget.style.borderColor=AMARELO} onMouseLeave={e=>e.currentTarget.style.borderColor=BORDA}>{render(item)}</div>)}
+                    <div style={{ marginBottom:16 }}><label style={{ fontSize:11, color:SUBTEXTO, fontWeight:700, textTransform:'uppercase' }}>Cargo / Função</label><input type="text" placeholder="Ex: Repórter, Editor..." value={formContato.cargo} onChange={e=>setFormContato({...formContato,cargo:e.target.value})} style={inp}/></div>
+                    <div style={{ display:'flex', gap:8 }}>
+                      <button onClick={salvarContato} style={{ background:AMARELO, color:'#000', border:'none', borderRadius:8, padding:'10px 20px', cursor:'pointer', fontWeight:700, fontSize:14 }}>{editandoContato?'Salvar edição':'Adicionar'}</button>
+                      <button onClick={cancelar} style={{ background:'transparent', border:`1px solid ${BORDA}`, borderRadius:8, padding:'10px 20px', cursor:'pointer', color:SUBTEXTO, fontSize:14 }}>Cancelar</button>
+                    </div>
                   </div>
-                ))}
-              </>)}
-            </>
-          )}
+                )}
+                <p style={{ fontSize:12, color:SUBTEXTO, marginBottom:12 }}>{contatosFiltrados.length} contato(s)</p>
+                <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(280px, 1fr))', gap:10 }}>
+                  {contatosFiltrados.map(c=>(
+                    <div key={c.id} style={{ background:CARD, border:`1px solid ${BORDA}`, borderRadius:12, padding:'1rem 1.2rem' }} onMouseEnter={e=>e.currentTarget.style.borderColor=AMARELO} onMouseLeave={e=>e.currentTarget.style.borderColor=BORDA}>
+                      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>
+                        <div><p style={{ margin:0, fontWeight:700, fontSize:14 }}>{c.nome}</p>{c.cargo&&<p style={{ margin:'3px 0 0', fontSize:12, color:SUBTEXTO }}>{c.cargo}</p>}<p style={{ margin:'6px 0 0', fontSize:13, color:AMARELO, fontWeight:600 }}>{c.telefone}</p></div>
+                        <div style={{ display:'flex', flexDirection:'column', gap:6, marginLeft:8 }}>
+                          <button onClick={()=>editarContato(c)} style={{ background:'none', border:'none', color:AMARELO, cursor:'pointer', fontSize:12, fontWeight:600 }}>Editar</button>
+                          <button onClick={()=>deletarContato(c.id)} style={{ background:'none', border:'none', color:'#ff4444', cursor:'pointer', fontSize:12, fontWeight:600 }}>Deletar</button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
 
-          {aba==='contatos' && (
-            <>
-              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16, flexWrap:'wrap', gap:12 }}>
-                <input type="text" placeholder="🔍 Buscar por nome ou cargo..." value={busca} onChange={e => setBusca(e.target.value)} style={{...inp,marginTop:0,flex:1,minWidth:200,maxWidth:400}}/>
-                <button onClick={() => { setMostrarForm(true); setFormContato(VAZIO_CONTATO) }} style={{ background:AMARELO, color:'#000', border:'none', borderRadius:8, padding:'10px 16px', cursor:'pointer', fontWeight:700, fontSize:13 }}>+ Novo contato</button>
-              </div>
-              {mostrarForm&&(
-                <div style={{ background:CARD, border:`1px solid ${BORDA}`, borderRadius:16, padding:'1.5rem', marginBottom:'1.5rem' }}>
-                  <h2 style={{ margin:'0 0 1rem', fontSize:15, fontWeight:700, color:AMARELO }}>{editandoContato?'✏️ Editar contato':'+ Novo contato'}</h2>
+            {/* FORMULÁRIO (pautas / relatorios / previsoes / pedidos) */}
+            {hasSidebar && mostrarForm && (
+              <div style={{ background:CARD, border:`1px solid ${aba==='pedidos'?LARANJA:BORDA}`, borderRadius:16, padding:'1.5rem', marginBottom:'1.5rem' }}>
+                <h2 style={{ margin:'0 0 1rem', fontSize:15, fontWeight:700, color:corAba }}>{(editandoPauta||editandoRel||editandoPrev||editandoPedido)?'✏️ Editar':`+ ${aba==='pautas'?'Nova Pauta':aba==='relatorios'?'Novo Relatório':aba==='previsoes'?'Nova Previsão':'Novo Pedido'}`}</h2>
+                {aba==='pautas'&&(<>
+                  <FormDataPeriodo dataInicio={formPauta.data} dataFim={formPauta.dataFim} onChangeInicio={v=>setFormPauta({...formPauta,data:v})} onChangeFim={v=>setFormPauta({...formPauta,dataFim:v})}/>
+                  <div style={{ marginBottom:12 }}><label style={{ fontSize:11, color:SUBTEXTO, fontWeight:700, textTransform:'uppercase' }}>Repórter</label><input type="text" placeholder="Nome" value={formPauta.reporter} onChange={e=>setFormPauta({...formPauta,reporter:e.target.value})} style={inp}/></div>
+                  <div style={{ marginBottom:12 }}><label style={{ fontSize:11, color:SUBTEXTO, fontWeight:700, textTransform:'uppercase' }}>Título</label><input type="text" placeholder="Título resumido" value={formPauta.titulo} onChange={e=>setFormPauta({...formPauta,titulo:e.target.value})} style={inp}/></div>
+                  <div style={{ marginBottom:12 }}><label style={{ fontSize:11, color:SUBTEXTO, fontWeight:700, textTransform:'uppercase' }}>Pauta completa</label><textarea placeholder="Descreva a pauta..." value={formPauta.conteudo} onChange={e=>setFormPauta({...formPauta,conteudo:e.target.value})} rows={5} style={{...inp,resize:'vertical',lineHeight:1.6}}/></div>
+                  <div style={{ marginBottom:16 }}>
+                    <label style={{ fontSize:11, color:SUBTEXTO, fontWeight:700, textTransform:'uppercase' }}>Anexar PDF</label>
+                    <div style={{ marginTop:6, display:'flex', alignItems:'center', gap:10 }}>
+                      <label style={{ background:'#222', border:`1px solid ${BORDA}`, borderRadius:8, padding:'8px 14px', cursor:'pointer', fontSize:13, color:SUBTEXTO, fontWeight:600 }}>
+                        {uploadando?'Enviando...':formPauta.pdfUrl?'✅ PDF anexado':'📎 Escolher PDF'}
+                        <input type="file" accept="application/pdf" onChange={handlePdf} style={{ display:'none' }}/>
+                      </label>
+                      {formPauta.pdfUrl&&<button onClick={()=>setFormPauta(f=>({...f,pdfUrl:''}))} style={{ background:'none', border:'none', color:'#ff4444', cursor:'pointer', fontSize:13, fontWeight:600 }}>Remover</button>}
+                    </div>
+                  </div>
+                </>)}
+                {aba==='relatorios'&&(<>
                   <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12, marginBottom:12 }}>
-                    <div><label style={{ fontSize:11, color:SUBTEXTO, fontWeight:700, textTransform:'uppercase' }}>Nome</label><input type="text" placeholder="Nome completo" value={formContato.nome} onChange={e=>setFormContato({...formContato,nome:e.target.value})} style={inp}/></div>
-                    <div><label style={{ fontSize:11, color:SUBTEXTO, fontWeight:700, textTransform:'uppercase' }}>Telefone</label><input type="text" placeholder="(xx) xxxxx-xxxx" value={formContato.telefone} onChange={e=>setFormContato({...formContato,telefone:e.target.value})} style={inp}/></div>
+                    <div><label style={{ fontSize:11, color:SUBTEXTO, fontWeight:700, textTransform:'uppercase' }}>Data</label><input type="date" value={formRel.data} onChange={e=>setFormRel({...formRel,data:e.target.value})} style={{...inp,colorScheme:'dark'}}/></div>
+                    <div><label style={{ fontSize:11, color:SUBTEXTO, fontWeight:700, textTransform:'uppercase' }}>Repórter</label><input type="text" placeholder="Nome" value={formRel.reporter} onChange={e=>setFormRel({...formRel,reporter:e.target.value})} style={inp}/></div>
                   </div>
-                  <div style={{ marginBottom:16 }}><label style={{ fontSize:11, color:SUBTEXTO, fontWeight:700, textTransform:'uppercase' }}>Cargo / Função</label><input type="text" placeholder="Ex: Repórter, Editor..." value={formContato.cargo} onChange={e=>setFormContato({...formContato,cargo:e.target.value})} style={inp}/></div>
-                  <div style={{ display:'flex', gap:8 }}>
-                    <button onClick={salvarContato} style={{ background:AMARELO, color:'#000', border:'none', borderRadius:8, padding:'10px 20px', cursor:'pointer', fontWeight:700, fontSize:14 }}>{editandoContato?'Salvar edição':'Adicionar'}</button>
-                    <button onClick={cancelar} style={{ background:'transparent', border:`1px solid ${BORDA}`, borderRadius:8, padding:'10px 20px', cursor:'pointer', color:SUBTEXTO, fontSize:14 }}>Cancelar</button>
+                  <div style={{ marginBottom:16 }}><label style={{ fontSize:11, color:SUBTEXTO, fontWeight:700, textTransform:'uppercase' }}>Relatório</label><textarea placeholder="O que aconteceu hoje..." value={formRel.texto} onChange={e=>setFormRel({...formRel,texto:e.target.value})} rows={3} style={{...inp,resize:'vertical',lineHeight:1.6}}/></div>
+                </>)}
+                {aba==='previsoes'&&(<>
+                  <FormDataPeriodo dataInicio={formPrev.data} dataFim={formPrev.dataFim} onChangeInicio={v=>setFormPrev({...formPrev,data:v})} onChangeFim={v=>setFormPrev({...formPrev,dataFim:v})}/>
+                  <div style={{ marginBottom:12 }}><label style={{ fontSize:11, color:SUBTEXTO, fontWeight:700, textTransform:'uppercase' }}>Título</label><input type="text" placeholder="Nome da pauta prevista" value={formPrev.titulo} onChange={e=>setFormPrev({...formPrev,titulo:e.target.value})} style={inp}/></div>
+                  <div style={{ marginBottom:16 }}><label style={{ fontSize:11, color:SUBTEXTO, fontWeight:700, textTransform:'uppercase' }}>Descrição</label><textarea placeholder="Detalhes sobre a previsão..." value={formPrev.descricao} onChange={e=>setFormPrev({...formPrev,descricao:e.target.value})} rows={4} style={{...inp,resize:'vertical',lineHeight:1.6}}/></div>
+                </>)}
+                {aba==='pedidos'&&(<>
+                  <div style={{ marginBottom:12 }}><label style={{ fontSize:11, color:SUBTEXTO, fontWeight:700, textTransform:'uppercase' }}>Data</label><input type="date" value={formPedido.data} onChange={e=>setFormPedido({...formPedido,data:e.target.value})} style={{...inp,colorScheme:'dark'}}/></div>
+                  <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12, marginBottom:12 }}>
+                    <div><label style={{ fontSize:11, color:SUBTEXTO, fontWeight:700, textTransform:'uppercase' }}>Quem pediu</label><input type="text" placeholder="Seu nome" value={formPedido.quem} onChange={e=>setFormPedido({...formPedido,quem:e.target.value})} style={inp}/></div>
+                    <div><label style={{ fontSize:11, color:SUBTEXTO, fontWeight:700, textTransform:'uppercase' }}>Repórter sugerido</label><input type="text" placeholder="Opcional" value={formPedido.reporter} onChange={e=>setFormPedido({...formPedido,reporter:e.target.value})} style={inp}/></div>
                   </div>
+                  <div style={{ marginBottom:12 }}><label style={{ fontSize:11, color:SUBTEXTO, fontWeight:700, textTransform:'uppercase' }}>Local / Cidade</label><input type="text" placeholder="Ex: Maracanã, Rio de Janeiro" value={formPedido.local} onChange={e=>setFormPedido({...formPedido,local:e.target.value})} style={inp}/></div>
+                  <div style={{ marginBottom:16 }}><label style={{ fontSize:11, color:SUBTEXTO, fontWeight:700, textTransform:'uppercase' }}>Descrição do pedido</label><textarea placeholder="Descreva o pedido de pauta..." value={formPedido.descricao} onChange={e=>setFormPedido({...formPedido,descricao:e.target.value})} rows={4} style={{...inp,resize:'vertical',lineHeight:1.6}}/></div>
+                </>)}
+                <div style={{ display:'flex', gap:8 }}>
+                  <button onClick={aba==='pautas'?salvarPauta:aba==='relatorios'?salvarRelatorio:aba==='previsoes'?salvarPrevisao:salvarPedido} disabled={uploadando} style={{ background:corAba, color:aba==='pedidos'?'#fff':'#000', border:'none', borderRadius:8, padding:'10px 20px', cursor:'pointer', fontWeight:700, fontSize:14 }}>{(editandoPauta||editandoRel||editandoPrev||editandoPedido)?'Salvar edição':'Adicionar'}</button>
+                  <button onClick={cancelar} style={{ background:'transparent', border:`1px solid ${BORDA}`, borderRadius:8, padding:'10px 20px', cursor:'pointer', color:SUBTEXTO, fontSize:14 }}>Cancelar</button>
                 </div>
-              )}
-              <p style={{ fontSize:12, color:SUBTEXTO, marginBottom:12 }}>{contatosFiltrados.length} contato(s)</p>
-              <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(280px, 1fr))', gap:10 }}>
-                {contatosFiltrados.map(c=>(
-                  <div key={c.id} style={{ background:CARD, border:`1px solid ${BORDA}`, borderRadius:12, padding:'1rem 1.2rem' }} onMouseEnter={e=>e.currentTarget.style.borderColor=AMARELO} onMouseLeave={e=>e.currentTarget.style.borderColor=BORDA}>
-                    <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>
-                      <div><p style={{ margin:0, fontWeight:700, fontSize:14 }}>{c.nome}</p>{c.cargo&&<p style={{ margin:'3px 0 0', fontSize:12, color:SUBTEXTO }}>{c.cargo}</p>}<p style={{ margin:'6px 0 0', fontSize:13, color:AMARELO, fontWeight:600 }}>{c.telefone}</p></div>
-                      <div style={{ display:'flex', flexDirection:'column', gap:6, marginLeft:8 }}>
-                        <button onClick={()=>editarContato(c)} style={{ background:'none', border:'none', color:AMARELO, cursor:'pointer', fontSize:12, fontWeight:600 }}>Editar</button>
-                        <button onClick={()=>deletarContato(c.id)} style={{ background:'none', border:'none', color:'#ff4444', cursor:'pointer', fontSize:12, fontWeight:600 }}>Deletar</button>
+              </div>
+            )}
+
+            {/* CABEÇALHO DO DIA SELECIONADO */}
+            {hasSidebar && dataSelecionada && !mostrarForm && (
+              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16 }}>
+                <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+                  <div style={{ width:4, height:20, background:corAba, borderRadius:2 }}/>
+                  <h3 style={{ margin:0, fontSize:14, fontWeight:700, color:SUBTEXTO, textTransform:'uppercase', letterSpacing:0.8 }}>{formatarData(dataSelecionada)}</h3>
+                </div>
+                <button onClick={() => { setMostrarForm(true); if(aba==='pautas')setFormPauta({...VAZIO_PAUTA,data:dataSelecionada}); else if(aba==='relatorios')setFormRel({...VAZIO_RELATORIO,data:dataSelecionada}); else if(aba==='previsoes')setFormPrev({...VAZIO_PREVISAO,data:dataSelecionada}); else setFormPedido({...VAZIO_PEDIDO,data:dataSelecionada}) }} style={{ background:corAba, color:aba==='pedidos'?'#fff':'#000', border:'none', borderRadius:8, padding:'8px 16px', cursor:'pointer', fontWeight:700, fontSize:13 }}>
+                  + {aba==='pautas'?'Nova pauta':aba==='relatorios'?'Novo relatório':aba==='previsoes'?'Nova previsão':'Novo pedido'}
+                </button>
+              </div>
+            )}
+
+            {/* CARDS DO DIA */}
+            {hasSidebar && dataSelecionada && !mostrarForm && (
+              <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+                {itensDoDia.length===0&&<p style={{ color:SUBTEXTO, fontSize:14 }}>Nenhum registro para este dia.</p>}
+                {aba==='pautas'&&itensDoDia.map(p=><CardPauta key={p.id} p={p}/>)}
+                {aba==='relatorios'&&itensDoDia.map(r=>(
+                  <div key={r.id} style={{ background:CARD, border:`1px solid ${BORDA}`, borderRadius:12, padding:'1rem 1.2rem' }} onMouseEnter={e=>e.currentTarget.style.borderColor=AMARELO} onMouseLeave={e=>e.currentTarget.style.borderColor=BORDA}>
+                    <div style={{ display:'flex', justifyContent:'space-between' }}>
+                      <p style={{ margin:0, fontSize:13, color:SUBTEXTO }}>👤 {r.reporter}</p>
+                      <div style={{ display:'flex', gap:12 }}>
+                        <button onClick={()=>editarRelatorio(r)} style={{ background:'none', border:'none', color:AMARELO, cursor:'pointer', fontSize:13, fontWeight:600 }}>Editar</button>
+                        <button onClick={()=>deletarRelatorio(r.id)} style={{ background:'none', border:'none', color:'#ff4444', cursor:'pointer', fontSize:13, fontWeight:600 }}>Deletar</button>
                       </div>
                     </div>
+                    <p style={{ margin:'8px 0 0', fontSize:14, color:'#ccc', whiteSpace:'pre-wrap', lineHeight:1.6 }}>{r.texto}</p>
+                  </div>
+                ))}
+                {aba==='previsoes'&&itensDoDia.map(p=>(
+                  <div key={p.id} style={{ background:CARD, border:`1px solid ${BORDA}`, borderRadius:12, padding:'1rem 1.2rem' }} onMouseEnter={e=>e.currentTarget.style.borderColor=AMARELO} onMouseLeave={e=>e.currentTarget.style.borderColor=BORDA}>
+                    <div style={{ display:'flex', justifyContent:'space-between' }}>
+                      <div><p style={{ margin:0, fontWeight:700, fontSize:15 }}>{p.titulo}</p><PeriodoTag item={p}/></div>
+                      <div style={{ display:'flex', gap:12 }}>
+                        <button onClick={()=>editarPrevisao(p)} style={{ background:'none', border:'none', color:AMARELO, cursor:'pointer', fontSize:13, fontWeight:600 }}>Editar</button>
+                        <button onClick={()=>deletarPrevisao(p.id)} style={{ background:'none', border:'none', color:'#ff4444', cursor:'pointer', fontSize:13, fontWeight:600 }}>Deletar</button>
+                      </div>
+                    </div>
+                    {p.descricao&&<><button onClick={()=>setExpandido(expandido===p.id?null:p.id)} style={{ background:'none', border:'none', color:SUBTEXTO, cursor:'pointer', fontSize:12, padding:0, fontWeight:600, textTransform:'uppercase', letterSpacing:0.5, marginTop:8 }}>{expandido===p.id?'▲ Ocultar':'▼ Ver descrição'}</button>{expandido===p.id&&<p style={{ marginTop:10, fontSize:14, color:'#ccc', whiteSpace:'pre-wrap', background:'#222', borderRadius:8, padding:'12px 14px', lineHeight:1.7, borderLeft:`3px solid ${AMARELO}` }}>{p.descricao}</p>}</>}
+                  </div>
+                ))}
+                {aba==='pedidos'&&itensDoDia.map(p=>(
+                  <div key={p.id} style={{ background:CARD, border:`1px solid ${LARANJA}`, borderRadius:12, padding:'1rem 1.2rem' }}>
+                    <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>
+                      <div style={{ flex:1 }}>
+                        <span style={{ display:'inline-block', background:'#2A1A00', color:LARANJA, border:`0.5px solid ${LARANJA}`, borderRadius:20, padding:'2px 10px', fontSize:10, fontWeight:700, marginBottom:8 }}>⏳ Aguardando aprovação</span>
+                        <p style={{ margin:0, fontWeight:700, fontSize:15 }}>{p.descricao}</p>
+                        <div style={{ marginTop:6, display:'flex', flexDirection:'column', gap:3 }}>
+                          <p style={{ margin:0, fontSize:13, color:SUBTEXTO }}>👤 Pedido por: {p.quem}</p>
+                          {p.reporter&&<p style={{ margin:0, fontSize:13, color:SUBTEXTO }}>🎙️ Repórter sugerido: {p.reporter}</p>}
+                          {p.local&&<p style={{ margin:0, fontSize:13, color:SUBTEXTO }}>📍 {p.local}</p>}
+                        </div>
+                      </div>
+                      <div style={{ display:'flex', gap:10, marginLeft:12, flexShrink:0 }}>
+                        <button onClick={()=>editarPedido(p)} style={{ background:'none', border:'none', color:LARANJA, cursor:'pointer', fontSize:13, fontWeight:600 }}>Editar</button>
+                        <button onClick={()=>deletarPedido(p.id)} style={{ background:'none', border:'none', color:'#ff4444', cursor:'pointer', fontSize:13, fontWeight:600 }}>Deletar</button>
+                      </div>
+                    </div>
+                    <button onClick={()=>converterEmPauta(p)} style={{ marginTop:12, background:AMARELO, color:'#000', border:'none', borderRadius:8, padding:'8px 16px', cursor:'pointer', fontWeight:700, fontSize:13 }}>✅ Converter em pauta</button>
                   </div>
                 ))}
               </div>
-            </>
-          )}
+            )}
 
-          {hasSidebar&&mostrarForm&&(
-            <div style={{ background:CARD, border:`1px solid ${aba==='pedidos'?LARANJA:BORDA}`, borderRadius:16, padding:'1.5rem', marginBottom:'1.5rem' }}>
-              <h2 style={{ margin:'0 0 1rem', fontSize:15, fontWeight:700, color:corAba }}>{(editandoPauta||editandoRel||editandoPrev||editandoPedido)?'✏️ Editar':`+ ${aba==='pautas'?'Nova Pauta':aba==='relatorios'?'Novo Relatório':aba==='previsoes'?'Nova Previsão':'Novo Pedido'}`}</h2>
-              {aba==='pautas'&&(<>
-                <FormDataPeriodo dataInicio={formPauta.data} dataFim={formPauta.dataFim} onChangeInicio={v=>setFormPauta({...formPauta,data:v})} onChangeFim={v=>setFormPauta({...formPauta,dataFim:v})}/>
-                <div style={{ marginBottom:12 }}><label style={{ fontSize:11, color:SUBTEXTO, fontWeight:700, textTransform:'uppercase' }}>Repórter</label><input type="text" placeholder="Nome" value={formPauta.reporter} onChange={e=>setFormPauta({...formPauta,reporter:e.target.value})} style={inp}/></div>
-                <div style={{ marginBottom:12 }}><label style={{ fontSize:11, color:SUBTEXTO, fontWeight:700, textTransform:'uppercase' }}>Título</label><input type="text" placeholder="Título resumido" value={formPauta.titulo} onChange={e=>setFormPauta({...formPauta,titulo:e.target.value})} style={inp}/></div>
-                <div style={{ marginBottom:12 }}><label style={{ fontSize:11, color:SUBTEXTO, fontWeight:700, textTransform:'uppercase' }}>Pauta completa</label><textarea placeholder="Descreva a pauta..." value={formPauta.conteudo} onChange={e=>setFormPauta({...formPauta,conteudo:e.target.value})} rows={5} style={{...inp,resize:'vertical',lineHeight:1.6}}/></div>
-                <div style={{ marginBottom:16 }}>
-                  <label style={{ fontSize:11, color:SUBTEXTO, fontWeight:700, textTransform:'uppercase' }}>Anexar PDF</label>
-                  <div style={{ marginTop:6, display:'flex', alignItems:'center', gap:10 }}>
-                    <label style={{ background:'#222', border:`1px solid ${BORDA}`, borderRadius:8, padding:'8px 14px', cursor:'pointer', fontSize:13, color:SUBTEXTO, fontWeight:600 }}>
-                      {uploadando?'Enviando...':formPauta.pdfUrl?'✅ PDF anexado':'📎 Escolher PDF'}
-                      <input type="file" accept="application/pdf" onChange={handlePdf} style={{ display:'none' }}/>
-                    </label>
-                    {formPauta.pdfUrl&&<button onClick={()=>setFormPauta(f=>({...f,pdfUrl:''}))} style={{ background:'none', border:'none', color:'#ff4444', cursor:'pointer', fontSize:13, fontWeight:600 }}>Remover</button>}
-                  </div>
-                </div>
-              </>)}
-              {aba==='relatorios'&&(<>
-                <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12, marginBottom:12 }}>
-                  <div><label style={{ fontSize:11, color:SUBTEXTO, fontWeight:700, textTransform:'uppercase' }}>Data</label><input type="date" value={formRel.data} onChange={e=>setFormRel({...formRel,data:e.target.value})} style={{...inp,colorScheme:'dark'}}/></div>
-                  <div><label style={{ fontSize:11, color:SUBTEXTO, fontWeight:700, textTransform:'uppercase' }}>Repórter</label><input type="text" placeholder="Nome" value={formRel.reporter} onChange={e=>setFormRel({...formRel,reporter:e.target.value})} style={inp}/></div>
-                </div>
-                <div style={{ marginBottom:16 }}><label style={{ fontSize:11, color:SUBTEXTO, fontWeight:700, textTransform:'uppercase' }}>Relatório</label><textarea placeholder="O que aconteceu hoje..." value={formRel.texto} onChange={e=>setFormRel({...formRel,texto:e.target.value})} rows={3} style={{...inp,resize:'vertical',lineHeight:1.6}}/></div>
-              </>)}
-              {aba==='previsoes'&&(<>
-                <FormDataPeriodo dataInicio={formPrev.data} dataFim={formPrev.dataFim} onChangeInicio={v=>setFormPrev({...formPrev,data:v})} onChangeFim={v=>setFormPrev({...formPrev,dataFim:v})}/>
-                <div style={{ marginBottom:12 }}><label style={{ fontSize:11, color:SUBTEXTO, fontWeight:700, textTransform:'uppercase' }}>Título</label><input type="text" placeholder="Nome da pauta prevista" value={formPrev.titulo} onChange={e=>setFormPrev({...formPrev,titulo:e.target.value})} style={inp}/></div>
-                <div style={{ marginBottom:16 }}><label style={{ fontSize:11, color:SUBTEXTO, fontWeight:700, textTransform:'uppercase' }}>Descrição</label><textarea placeholder="Detalhes sobre a previsão..." value={formPrev.descricao} onChange={e=>setFormPrev({...formPrev,descricao:e.target.value})} rows={4} style={{...inp,resize:'vertical',lineHeight:1.6}}/></div>
-              </>)}
-              {aba==='pedidos'&&(<>
-                <div style={{ marginBottom:12 }}><label style={{ fontSize:11, color:SUBTEXTO, fontWeight:700, textTransform:'uppercase' }}>Data</label><input type="date" value={formPedido.data} onChange={e=>setFormPedido({...formPedido,data:e.target.value})} style={{...inp,colorScheme:'dark'}}/></div>
-                <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12, marginBottom:12 }}>
-                  <div><label style={{ fontSize:11, color:SUBTEXTO, fontWeight:700, textTransform:'uppercase' }}>Quem pediu</label><input type="text" placeholder="Seu nome" value={formPedido.quem} onChange={e=>setFormPedido({...formPedido,quem:e.target.value})} style={inp}/></div>
-                  <div><label style={{ fontSize:11, color:SUBTEXTO, fontWeight:700, textTransform:'uppercase' }}>Repórter sugerido</label><input type="text" placeholder="Opcional" value={formPedido.reporter} onChange={e=>setFormPedido({...formPedido,reporter:e.target.value})} style={inp}/></div>
-                </div>
-                <div style={{ marginBottom:12 }}><label style={{ fontSize:11, color:SUBTEXTO, fontWeight:700, textTransform:'uppercase' }}>Local / Cidade</label><input type="text" placeholder="Ex: Maracanã, Rio de Janeiro" value={formPedido.local} onChange={e=>setFormPedido({...formPedido,local:e.target.value})} style={inp}/></div>
-                <div style={{ marginBottom:16 }}><label style={{ fontSize:11, color:SUBTEXTO, fontWeight:700, textTransform:'uppercase' }}>Descrição do pedido</label><textarea placeholder="Descreva o pedido de pauta..." value={formPedido.descricao} onChange={e=>setFormPedido({...formPedido,descricao:e.target.value})} rows={4} style={{...inp,resize:'vertical',lineHeight:1.6}}/></div>
-              </>)}
-              <div style={{ display:'flex', gap:8 }}>
-                <button onClick={aba==='pautas'?salvarPauta:aba==='relatorios'?salvarRelatorio:aba==='previsoes'?salvarPrevisao:salvarPedido} disabled={uploadando} style={{ background:corAba, color:aba==='pedidos'?'#fff':'#000', border:'none', borderRadius:8, padding:'10px 20px', cursor:'pointer', fontWeight:700, fontSize:14 }}>{(editandoPauta||editandoRel||editandoPrev||editandoPedido)?'Salvar edição':'Adicionar'}</button>
-                <button onClick={cancelar} style={{ background:'transparent', border:`1px solid ${BORDA}`, borderRadius:8, padding:'10px 20px', cursor:'pointer', color:SUBTEXTO, fontSize:14 }}>Cancelar</button>
-              </div>
-            </div>
-          )}
+            {/* EMPTY STATE */}
+            {hasSidebar && !dataSelecionada && !mostrarForm && <EmptyState />}
 
-          {hasSidebar&&dataSelecionada&&!mostrarForm&&(
-            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16 }}>
-              <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-                <div style={{ width:4, height:20, background:corAba, borderRadius:2 }}/>
-                <h3 style={{ margin:0, fontSize:14, fontWeight:700, color:SUBTEXTO, textTransform:'uppercase', letterSpacing:0.8 }}>{formatarData(dataSelecionada)}</h3>
-              </div>
-              <button onClick={() => { setMostrarForm(true); if(aba==='pautas')setFormPauta({...VAZIO_PAUTA,data:dataSelecionada}); else if(aba==='relatorios')setFormRel({...VAZIO_RELATORIO,data:dataSelecionada}); else if(aba==='previsoes')setFormPrev({...VAZIO_PREVISAO,data:dataSelecionada}); else setFormPedido({...VAZIO_PEDIDO,data:dataSelecionada}) }} style={{ background:corAba, color:aba==='pedidos'?'#fff':'#000', border:'none', borderRadius:8, padding:'8px 16px', cursor:'pointer', fontWeight:700, fontSize:13 }}>
-                + {aba==='pautas'?'Nova pauta':aba==='relatorios'?'Novo relatório':aba==='previsoes'?'Nova previsão':'Novo pedido'}
-              </button>
-            </div>
-          )}
-
-          {hasSidebar&&dataSelecionada&&!mostrarForm&&(
-            <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
-              {itensDoDia.length===0&&<p style={{ color:SUBTEXTO, fontSize:14 }}>Nenhum registro para este dia.</p>}
-              {aba==='pautas'&&itensDoDia.map(p=><CardPauta key={p.id} p={p}/>)}
-              {aba==='relatorios'&&itensDoDia.map(r=>(
-                <div key={r.id} style={{ background:CARD, border:`1px solid ${BORDA}`, borderRadius:12, padding:'1rem 1.2rem' }} onMouseEnter={e=>e.currentTarget.style.borderColor=AMARELO} onMouseLeave={e=>e.currentTarget.style.borderColor=BORDA}>
-                  <div style={{ display:'flex', justifyContent:'space-between' }}>
-                    <p style={{ margin:0, fontSize:13, color:SUBTEXTO }}>👤 {r.reporter}</p>
-                    <div style={{ display:'flex', gap:12 }}>
-                      <button onClick={()=>editarRelatorio(r)} style={{ background:'none', border:'none', color:AMARELO, cursor:'pointer', fontSize:13, fontWeight:600 }}>Editar</button>
-                      <button onClick={()=>deletarRelatorio(r.id)} style={{ background:'none', border:'none', color:'#ff4444', cursor:'pointer', fontSize:13, fontWeight:600 }}>Deletar</button>
-                    </div>
-                  </div>
-                  <p style={{ margin:'8px 0 0', fontSize:14, color:'#ccc', whiteSpace:'pre-wrap', lineHeight:1.6 }}>{r.texto}</p>
-                </div>
-              ))}
-              {aba==='previsoes'&&itensDoDia.map(p=>(
-                <div key={p.id} style={{ background:CARD, border:`1px solid ${BORDA}`, borderRadius:12, padding:'1rem 1.2rem' }} onMouseEnter={e=>e.currentTarget.style.borderColor=AMARELO} onMouseLeave={e=>e.currentTarget.style.borderColor=BORDA}>
-                  <div style={{ display:'flex', justifyContent:'space-between' }}>
-                    <div><p style={{ margin:0, fontWeight:700, fontSize:15 }}>{p.titulo}</p><PeriodoTag item={p}/></div>
-                    <div style={{ display:'flex', gap:12 }}>
-                      <button onClick={()=>editarPrevisao(p)} style={{ background:'none', border:'none', color:AMARELO, cursor:'pointer', fontSize:13, fontWeight:600 }}>Editar</button>
-                      <button onClick={()=>deletarPrevisao(p.id)} style={{ background:'none', border:'none', color:'#ff4444', cursor:'pointer', fontSize:13, fontWeight:600 }}>Deletar</button>
-                    </div>
-                  </div>
-                  {p.descricao&&<><button onClick={()=>setExpandido(expandido===p.id?null:p.id)} style={{ background:'none', border:'none', color:SUBTEXTO, cursor:'pointer', fontSize:12, padding:0, fontWeight:600, textTransform:'uppercase', letterSpacing:0.5, marginTop:8 }}>{expandido===p.id?'▲ Ocultar':'▼ Ver descrição'}</button>{expandido===p.id&&<p style={{ marginTop:10, fontSize:14, color:'#ccc', whiteSpace:'pre-wrap', background:'#222', borderRadius:8, padding:'12px 14px', lineHeight:1.7, borderLeft:`3px solid ${AMARELO}` }}>{p.descricao}</p>}</>}
-                </div>
-              ))}
-              {aba==='pedidos'&&itensDoDia.map(p=>(
-                <div key={p.id} style={{ background:CARD, border:`1px solid ${LARANJA}`, borderRadius:12, padding:'1rem 1.2rem' }}>
-                  <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>
-                    <div style={{ flex:1 }}>
-                      <span style={{ display:'inline-block', background:'#2A1A00', color:LARANJA, border:`0.5px solid ${LARANJA}`, borderRadius:20, padding:'2px 10px', fontSize:10, fontWeight:700, marginBottom:8 }}>⏳ Aguardando aprovação</span>
-                      <p style={{ margin:0, fontWeight:700, fontSize:15 }}>{p.descricao}</p>
-                      <div style={{ marginTop:6, display:'flex', flexDirection:'column', gap:3 }}>
-                        <p style={{ margin:0, fontSize:13, color:SUBTEXTO }}>👤 Pedido por: {p.quem}</p>
-                        {p.reporter&&<p style={{ margin:0, fontSize:13, color:SUBTEXTO }}>🎙️ Repórter sugerido: {p.reporter}</p>}
-                        {p.local&&<p style={{ margin:0, fontSize:13, color:SUBTEXTO }}>📍 {p.local}</p>}
-                      </div>
-                    </div>
-                    <div style={{ display:'flex', gap:10, marginLeft:12, flexShrink:0 }}>
-                      <button onClick={()=>editarPedido(p)} style={{ background:'none', border:'none', color:LARANJA, cursor:'pointer', fontSize:13, fontWeight:600 }}>Editar</button>
-                      <button onClick={()=>deletarPedido(p.id)} style={{ background:'none', border:'none', color:'#ff4444', cursor:'pointer', fontSize:13, fontWeight:600 }}>Deletar</button>
-                    </div>
-                  </div>
-                  <button onClick={()=>converterEmPauta(p)} style={{ marginTop:12, background:AMARELO, color:'#000', border:'none', borderRadius:8, padding:'8px 16px', cursor:'pointer', fontWeight:700, fontSize:13 }}>✅ Converter em pauta</button>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {hasSidebar&&!dataSelecionada&&!mostrarForm&&(
-            <div style={{ display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', height:300, gap:12 }}>
-              <p style={{ color:SUBTEXTO, fontSize:14 }}>Selecione uma data na lateral ou crie um novo registro.</p>
-              <button onClick={()=>setMostrarForm(true)} style={{ background:corAba, color:aba==='pedidos'?'#fff':'#000', border:'none', borderRadius:8, padding:'10px 20px', cursor:'pointer', fontWeight:700, fontSize:14 }}>
-                + {aba==='pautas'?'Nova pauta':aba==='relatorios'?'Novo relatório':aba==='previsoes'?'Nova previsão':'Novo pedido'}
-              </button>
-            </div>
-          )}
-        </section>
+          </section>
         )}
       </div>
     </main>
