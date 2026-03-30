@@ -247,7 +247,8 @@ export default function Home() {
     setUploadando(true)
     const fd = new FormData(); fd.append('file', file)
     const res = await fetch('/api/upload', { method: 'POST', body: fd })
-    setFormPauta(f => ({ ...f, pdfUrl: (await res.json()).url }))
+    const data = await res.json()
+    setFormPauta(f => ({ ...f, pdfUrl: data.url }))
     setUploadando(false)
   }
 
