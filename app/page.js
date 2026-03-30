@@ -137,11 +137,24 @@ function Calendario({ pautas, relatorios, previsoes, pedidos, onDiaClick }) {
   )
 }
 
-function AbaMetricas({ metricas, onSalvar, onDeletar, onEditar }) {
+function AbaMetricas({ metricas, onSalvar, onDeletar, onEditar, pautas }) {
   const [mostrarForm, setMostrarForm] = useState(false)
+  const [modoImportar, setModoImportar] = useState(false)
   const [form, setForm] = useState(VAZIO_METRICA)
   const [editando, setEditando] = useState(null)
   const [filtroPlat, setFiltroPlat] = useState('Todas')
+  const [buscaPauta, setBuscaPauta] = useState('')
+
+  const pautasFiltradas = pautas.filter(p =>
+    p.titulo.toLowerCase().includes(buscaPauta.toLowerCase()) ||
+    (p.reporter||'').toLowerCase().includes(buscaPauta.toLowerCase())
+  )
+
+  function importarPauta(p) {
+    setForm({ data: p.data, titulo: p.titulo, reporter: p.reporter, plataforma: '', noAr: 'sim', views: '' })
+    setModoImportar(false)
+    setMostrarForm(true)
+  }
 
   const total = metricas.length
   const noAr = metricas.filter(m => m.noAr === 'sim').length
@@ -243,8 +256,32 @@ function AbaMetricas({ metricas, onSalvar, onDeletar, onEditar }) {
               }}>{p}</button>
             ))}
           </div>
-          <button onClick={() => { setMostrarForm(true); setForm(VAZIO_METRICA) }} style={{ background:AMARELO, color:'#000', border:'none', borderRadius:8, padding:'7px 14px', cursor:'pointer', fontWeight:700, fontSize:13 }}>+ Adicionar resultado</button>
+          <div style={{ display:'flex', gap:8 }}>
+            <button onClick={() => { setModoImportar(true); setMostrarForm(false); setBuscaPauta('') }} style={{ background:'#2A2A2A', color:TEXTO, border:`1px solid ${BORDA}`, borderRadius:8, padding:'7px 14px', cursor:'pointer', fontWeight:700, fontSize:13 }}>📋 Importar pauta</button>
+            <button onClick={() => { setMostrarForm(true); setModoImportar(false); setForm(VAZIO_METRICA) }} style={{ background:AMARELO, color:'#000', border:'none', borderRadius:8, padding:'7px 14px', cursor:'pointer', fontWeight:700, fontSize:13 }}>+ Nova manual</button>
+          </div>
         </div>
+
+        {modoImportar && (
+          <div style={{ background:'#222', border:`1px solid ${BORDA}`, borderRadius:12, padding:'1.2rem', marginBottom:16 }}>
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:12 }}>
+              <h3 style={{ margin:0, fontSize:14, fontWeight:700, color:AMARELO }}>📋 Importar pauta existente</h3>
+              <button onClick={() => setModoImportar(false)} style={{ background:'none', border:'none', color:SUBTEXTO, cursor:'pointer', fontSize:16 }}>✕</button>
+            </div>
+            <input type="text" placeholder="Buscar pauta por título ou repórter..." value={buscaPauta} onChange={e => setBuscaPauta(e.target.value)} style={{...inp, marginTop:0, marginBottom:12}} autoFocus />
+            <div style={{ maxHeight:240, overflowY:'auto', display:'flex', flexDirection:'column', gap:6 }}>
+              {pautasFiltradas.length === 0 && <p style={{ color:SUBTEXTO, fontSize:13, textAlign:'center', padding:'1rem 0' }}>Nenhuma pauta encontrada.</p>}
+              {pautasFiltradas.map(p => (
+                <div key={p.id} onClick={() => importarPauta(p)} style={{ background:CARD, border:`1px solid ${BORDA}`, borderRadius:8, padding:'10px 14px', cursor:'pointer' }}
+                  onMouseEnter={e => e.currentTarget.style.borderColor=AMARELO}
+                  onMouseLeave={e => e.currentTarget.style.borderColor=BORDA}>
+                  <p style={{ margin:0, fontWeight:700, fontSize:13, color:TEXTO }}>{p.titulo}</p>
+                  <p style={{ margin:'3px 0 0', fontSize:11, color:SUBTEXTO }}>👤 {p.reporter} · 📅 {formatarDataSimples(p.data)}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {mostrarForm && (
           <div style={{ background:'#222', border:`1px solid ${BORDA}`, borderRadius:12, padding:'1.2rem', marginBottom:16 }}>
