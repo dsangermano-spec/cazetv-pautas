@@ -666,7 +666,8 @@ Gere APENAS o HTML do relatório, sem comentários, sem explicações, sem markd
   }
 
   // ─── EMPTY STATE: mostrado quando não tem data selecionada ────────────────
-  const labelAba = aba==='pautas'?'pauta selecionada':aba==='relatorios'?'relatório selecionado':aba==='previsoes'?'previsão selecionada':'pedido selecionado'
+  const labelAba = aba==='pautas'?'pauta':aba==='relatorios'?'relatório':aba==='previsoes'?'previsão':'pedido'
+  const labelAbaSel = aba==='pautas'?'Nenhuma pauta selecionada':aba==='relatorios'?'Nenhum relatório selecionado':aba==='previsoes'?'Nenhuma previsão selecionada':'Nenhum pedido selecionado'
   const labelAbaPlural = aba==='pautas'?'pautas':aba==='relatorios'?'relatórios':aba==='previsoes'?'previsões':'pedidos'
   const iconeAba = aba==='pautas'?'📋':aba==='relatorios'?'📝':aba==='previsoes'?'🔭':'📥'
 
@@ -683,7 +684,7 @@ Gere APENAS o HTML do relatório, sem comentários, sem explicações, sem markd
         }}>{iconeAba}</div>
         <div>
           <p style={{ margin:0, fontSize:16, fontWeight:700, color:TEXTO }}>
-            Nenhum {labelAba}
+            {labelAbaSel}
           </p>
           <p style={{ margin:'6px 0 0', fontSize:13, color:SUBTEXTO, maxWidth:280, lineHeight:1.6 }}>
             Escolha uma data na lateral para ver os {labelAbaPlural}, ou crie um novo registro.
