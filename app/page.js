@@ -18,7 +18,6 @@ const SUBTEXTO = '#888888'
 const VERDE = '#4CAF50'
 
 const PLATAFORMAS = ['Instagram', 'YouTube', 'Programas', 'Transmissões']
-const CORES_PLAT = [AMARELO, '#E1306C', '#9146FF', '#00b4d8']
 
 const inp = {
   width: '100%', background: '#222', border: '1px solid #2A2A2A',
@@ -146,6 +145,7 @@ function AbaMetricas({ metricas, onSalvar, onDeletar, onEditar, pautas }) {
   const [filtroPlat, setFiltroPlat] = useState('Todas')
   const [buscaPauta, setBuscaPauta] = useState('')
 
+  // helper: normaliza plataformas para sempre ser array
   function getPlats(m) {
     if (Array.isArray(m.plataformas) && m.plataformas.length > 0) return m.plataformas
     if (m.plataforma) return [m.plataforma]
@@ -191,6 +191,7 @@ function AbaMetricas({ metricas, onSalvar, onDeletar, onEditar, pautas }) {
   function cancelar() { setForm(VAZIO_METRICA); setEditando(null); setMostrarForm(false) }
 
   const corAprov = aproveitamento >= 75 ? VERDE : aproveitamento >= 50 ? AMARELO : '#ff4444'
+  const coresPlat = [AMARELO, '#E1306C', '#9146FF', '#00b4d8']
 
   return (
     <div style={{ padding:'1.5rem', overflowY:'auto', flex:1 }}>
@@ -220,12 +221,13 @@ function AbaMetricas({ metricas, onSalvar, onDeletar, onEditar, pautas }) {
                   <span>{p}</span><span style={{ color:SUBTEXTO }}>{count} ({pct}%)</span>
                 </div>
                 <div style={{ background:'#2A2A2A', borderRadius:4, height:8 }}>
-                  <div style={{ background:CORES_PLAT[i], borderRadius:4, height:8, width:`${pct}%`, transition:'width 0.3s' }} />
+                  <div style={{ background:coresPlat[i], borderRadius:4, height:8, width:`${pct}%`, transition:'width 0.3s' }} />
                 </div>
               </div>
             )
           })}
         </div>
+
         <div style={{ background:CARD, borderRadius:10, padding:'16px' }}>
           <div style={{ fontSize:12, fontWeight:700, color:SUBTEXTO, textTransform:'uppercase', letterSpacing:0.5, marginBottom:12 }}>Aproveitamento geral</div>
           <div style={{ display:'flex', alignItems:'center', justifyContent:'center', height:120 }}>
@@ -293,6 +295,7 @@ function AbaMetricas({ metricas, onSalvar, onDeletar, onEditar, pautas }) {
               <div><label style={{ fontSize:11, color:SUBTEXTO, fontWeight:700, textTransform:'uppercase' }}>Repórter</label><input type="text" placeholder="Nome" value={form.reporter} onChange={e => setForm({...form,reporter:e.target.value})} style={inp} /></div>
             </div>
             <div style={{ marginBottom:10 }}><label style={{ fontSize:11, color:SUBTEXTO, fontWeight:700, textTransform:'uppercase' }}>Título da pauta</label><input type="text" placeholder="Nome da pauta" value={form.titulo} onChange={e => setForm({...form,titulo:e.target.value})} style={inp} /></div>
+
             <div style={{ marginBottom:14 }}>
               <label style={{ fontSize:11, color:SUBTEXTO, fontWeight:700, textTransform:'uppercase', display:'block', marginBottom:8 }}>Plataformas (selecione uma ou mais)</label>
               <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
@@ -302,34 +305,17 @@ function AbaMetricas({ metricas, onSalvar, onDeletar, onEditar, pautas }) {
                     <button key={p} type="button" onClick={() => togglePlat(p)} style={{
                       padding:'6px 14px', borderRadius:20, cursor:'pointer', fontSize:12, fontWeight:700,
                       border: sel ? 'none' : `1px solid ${BORDA}`,
-                      background: sel ? CORES_PLAT[i] : '#2A2A2A',
-                      color: sel ? (p === 'Instagram' ? '#000' : '#fff') : SUBTEXTO,
+                      background: sel ? coresPlat[i] : '#2A2A2A',
+                      color: sel ? '#fff' : SUBTEXTO,
+                      transition:'all 0.15s',
                     }}>{p}</button>
                   )
                 })}
               </div>
               {(form.plataformas||[]).length === 0 && <p style={{ fontSize:11, color:'#555', margin:'6px 0 0' }}>Nenhuma selecionada</p>}
             </div>
-            {(form.plataformas||[]).length > 0 && (
-              <div style={{ background:'#1a1a1a', border:`1px solid #333`, borderRadius:10, padding:'12px 14px', marginBottom:14 }}>
-                <p style={{ fontSize:10, color:SUBTEXTO, fontWeight:700, textTransform:'uppercase', letterSpacing:0.5, margin:'0 0 10px' }}>Detalhes por plataforma</p>
-                <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(160px, 1fr))', gap:10 }}>
-                  {(form.plataformas||[]).includes('Instagram') && (
-                    <div><label style={{ fontSize:11, color:AMARELO, fontWeight:700, textTransform:'uppercase' }}>Posts Instagram</label><input type="number" placeholder="Qtd. posts" value={form.postsInsta} onChange={e => setForm({...form,postsInsta:e.target.value})} style={inp} /></div>
-                  )}
-                  {(form.plataformas||[]).includes('YouTube') && (
-                    <div><label style={{ fontSize:11, color:'#E1306C', fontWeight:700, textTransform:'uppercase' }}>Entradas YouTube</label><input type="number" placeholder="Qtd. entradas" value={form.entradasYT} onChange={e => setForm({...form,entradasYT:e.target.value})} style={inp} /></div>
-                  )}
-                  {(form.plataformas||[]).includes('Programas') && (
-                    <div><label style={{ fontSize:11, color:'#9146FF', fontWeight:700, textTransform:'uppercase' }}>Entradas Programas</label><input type="number" placeholder="Qtd. entradas" value={form.entradasProg} onChange={e => setForm({...form,entradasProg:e.target.value})} style={inp} /></div>
-                  )}
-                  {(form.plataformas||[]).includes('Transmissões') && (
-                    <div><label style={{ fontSize:11, color:'#00b4d8', fontWeight:700, textTransform:'uppercase' }}>Entradas Transmissões</label><input type="number" placeholder="Qtd. entradas" value={form.entradasTrans} onChange={e => setForm({...form,entradasTrans:e.target.value})} style={inp} /></div>
-                  )}
-                </div>
-              </div>
-            )}
-            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginBottom:14 }}>
+
+            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginBottom:10 }}>
               <div>
                 <label style={{ fontSize:11, color:SUBTEXTO, fontWeight:700, textTransform:'uppercase' }}>Entrou no ar?</label>
                 <select value={form.noAr} onChange={e => setForm({...form,noAr:e.target.value})} style={{...inp, cursor:'pointer'}}>
@@ -342,6 +328,38 @@ function AbaMetricas({ metricas, onSalvar, onDeletar, onEditar, pautas }) {
                 <input type="number" placeholder="Ex: 50000" value={form.views} onChange={e => setForm({...form,views:e.target.value})} style={inp} />
               </div>
             </div>
+
+            {(form.plataformas||[]).length > 0 && (
+              <div style={{ background:'#1a1a1a', border:`1px solid #333`, borderRadius:10, padding:'12px 14px', marginBottom:14 }}>
+                <p style={{ fontSize:10, color:SUBTEXTO, fontWeight:700, textTransform:'uppercase', letterSpacing:0.5, margin:'0 0 10px' }}>Detalhes por plataforma</p>
+                <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(160px, 1fr))', gap:10 }}>
+                  {(form.plataformas||[]).includes('Instagram') && (
+                    <div>
+                      <label style={{ fontSize:11, color:'#FFD600', fontWeight:700, textTransform:'uppercase' }}>Posts Instagram</label>
+                      <input type="number" placeholder="Qtd. posts" value={form.postsInsta} onChange={e => setForm({...form,postsInsta:e.target.value})} style={inp} />
+                    </div>
+                  )}
+                  {(form.plataformas||[]).includes('YouTube') && (
+                    <div>
+                      <label style={{ fontSize:11, color:'#E1306C', fontWeight:700, textTransform:'uppercase' }}>Entradas YouTube</label>
+                      <input type="number" placeholder="Qtd. entradas" value={form.entradasYT} onChange={e => setForm({...form,entradasYT:e.target.value})} style={inp} />
+                    </div>
+                  )}
+                  {(form.plataformas||[]).includes('Programas') && (
+                    <div>
+                      <label style={{ fontSize:11, color:'#9146FF', fontWeight:700, textTransform:'uppercase' }}>Entradas Programas</label>
+                      <input type="number" placeholder="Qtd. entradas" value={form.entradasProg} onChange={e => setForm({...form,entradasProg:e.target.value})} style={inp} />
+                    </div>
+                  )}
+                  {(form.plataformas||[]).includes('Transmissões') && (
+                    <div>
+                      <label style={{ fontSize:11, color:'#00b4d8', fontWeight:700, textTransform:'uppercase' }}>Entradas Transmissões</label>
+                      <input type="number" placeholder="Qtd. entradas" value={form.entradasTrans} onChange={e => setForm({...form,entradasTrans:e.target.value})} style={inp} />
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
             <div style={{ display:'flex', gap:8 }}>
               <button onClick={salvar} style={{ background:AMARELO, color:'#000', border:'none', borderRadius:8, padding:'9px 18px', cursor:'pointer', fontWeight:700, fontSize:13 }}>{editando?'Salvar edição':'Adicionar'}</button>
               <button onClick={cancelar} style={{ background:'transparent', border:`1px solid ${BORDA}`, borderRadius:8, padding:'9px 18px', cursor:'pointer', color:SUBTEXTO, fontSize:13 }}>Cancelar</button>
@@ -372,7 +390,7 @@ function AbaMetricas({ metricas, onSalvar, onDeletar, onEditar, pautas }) {
                         {getPlats(m).length > 0
                           ? getPlats(m).map(p => {
                               const i = PLATAFORMAS.indexOf(p)
-                              return <span key={p} style={{ background: i >= 0 ? CORES_PLAT[i] : '#2A2A2A', color: p==='Instagram'?'#000':'#fff', borderRadius:20, padding:'2px 10px', fontSize:11, fontWeight:600 }}>{p}</span>
+                              return <span key={p} style={{ background: i >= 0 ? coresPlat[i] : '#2A2A2A', color:'#fff', borderRadius:20, padding:'2px 10px', fontSize:11, fontWeight:600 }}>{p}</span>
                             })
                           : <span style={{ color:SUBTEXTO }}>—</span>
                         }
@@ -384,12 +402,12 @@ function AbaMetricas({ metricas, onSalvar, onDeletar, onEditar, pautas }) {
                         : <span style={{ background:'#2a0a0a', color:'#ff4444', border:'0.5px solid #ff4444', borderRadius:20, padding:'2px 10px', fontSize:11, fontWeight:700 }}>✗ Não</span>
                       }
                     </td>
-                    <td style={{ padding:'9px 8px', borderBottom:`0.5px solid ${BORDA}` }}>
-                      <div style={{ color:AMARELO, fontWeight:700 }}>{formatViews(m.views)}</div>
-                      {m.postsInsta && <div style={{ fontSize:10, color:AMARELO, opacity:0.8 }}>📸 {m.postsInsta} posts</div>}
-                      {m.entradasYT && <div style={{ fontSize:10, color:'#E1306C' }}>▶ {m.entradasYT} ent. YT</div>}
-                      {m.entradasProg && <div style={{ fontSize:10, color:'#9146FF' }}>📺 {m.entradasProg} ent. Prog</div>}
-                      {m.entradasTrans && <div style={{ fontSize:10, color:'#00b4d8' }}>📡 {m.entradasTrans} ent. Trans</div>}
+                    <td style={{ padding:'9px 8px', color:AMARELO, fontWeight:700, borderBottom:`0.5px solid ${BORDA}` }}>
+                      <div>{formatViews(m.views)}</div>
+                      {m.postsInsta && <div style={{ fontSize:10, color:'#FFD600', opacity:0.7 }}>📸 {m.postsInsta} posts</div>}
+                      {m.entradasYT && <div style={{ fontSize:10, color:'#E1306C', opacity:0.9 }}>▶ {m.entradasYT} ent. YT</div>}
+                      {m.entradasProg && <div style={{ fontSize:10, color:'#9146FF', opacity:0.9 }}>📺 {m.entradasProg} ent. Prog</div>}
+                      {m.entradasTrans && <div style={{ fontSize:10, color:'#00b4d8', opacity:0.9 }}>📡 {m.entradasTrans} ent. Trans</div>}
                     </td>
                     <td style={{ padding:'9px 8px', borderBottom:`0.5px solid ${BORDA}`, whiteSpace:'nowrap' }}>
                       <button onClick={() => iniciarEdicao(m)} style={{ background:'none', border:'none', color:AMARELO, cursor:'pointer', fontSize:12, fontWeight:600, marginRight:8 }}>Editar</button>
@@ -435,16 +453,9 @@ export default function Home() {
   const [modalRelatorio, setModalRelatorio] = useState(false)
   const [relatorioGerado, setRelatorioGerado] = useState('')
   const [gerando, setGerando] = useState(false)
-  const [copiado, setCopiado] = useState(false)
 
   const hasSidebar = !['contatos','busca','calendario','metricas'].includes(aba)
   const corAba = aba==='pedidos'?LARANJA:AMARELO
-
-  const datasP = getDatasUnicas(pautas)
-  const datasR = getDatasUnicas(relatorios)
-  const datasV = getDatasUnicas(previsoes)
-  const datasPed = [...new Set(pedidos.map(p => p.data))].sort()
-  const datas = aba==='pautas'?datasP:aba==='relatorios'?datasR:aba==='previsoes'?datasV:datasPed
 
   useEffect(() => { carregarTudo() }, [])
 
@@ -485,36 +496,23 @@ export default function Home() {
   async function gerarRelatorio() {
     setGerando(true)
     setRelatorioGerado('')
+    const hoje = new Date().toISOString().split('T')[0]
+    const amanha = new Date(Date.now() + 86400000).toISOString().split('T')[0]
+    const pautasHoje = pautas.filter(p => getDatasNoPeriodo(p.data, p.dataFim).includes(hoje))
+    const relHoje = relatorios.filter(r => r.data === hoje)
+    const pautasAmanha = pautas.filter(p => getDatasNoPeriodo(p.data, p.dataFim).includes(amanha))
     try {
-      const res = await fetch('/api/gerar-relatorio', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({}) })
+      const res = await fetch('/api/gerar-relatorio', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pautasHoje, relHoje, pautasAmanha, hoje, amanha }),
+      })
       const data = await res.json()
       setRelatorioGerado(data.html || '<p>Erro ao gerar relatório.</p>')
     } catch(e) {
       setRelatorioGerado('<p style="color:red">Erro ao conectar. Tente novamente.</p>')
     }
     setGerando(false)
-  }
-
-  function copiarRelatorio() {
-    const blob = new Blob([relatorioGerado], { type: 'text/html' })
-    const clipItem = new ClipboardItem({ 'text/html': blob, 'text/plain': new Blob([relatorioGerado.replace(/<[^>]+>/g, '')], { type: 'text/plain' }) })
-    navigator.clipboard.write([clipItem]).then(() => {
-      setCopiado(true)
-      setTimeout(() => setCopiado(false), 2500)
-    }).catch(() => {
-      const el = document.createElement('div')
-      el.innerHTML = relatorioGerado
-      document.body.appendChild(el)
-      const range = document.createRange()
-      range.selectNode(el)
-      window.getSelection().removeAllRanges()
-      window.getSelection().addRange(range)
-      document.execCommand('copy')
-      window.getSelection().removeAllRanges()
-      document.body.removeChild(el)
-      setCopiado(true)
-      setTimeout(() => setCopiado(false), 2500)
-    })
   }
 
   function baixarPDF() {
@@ -551,6 +549,13 @@ export default function Home() {
     await fetch('/api/pedidos', { method:'DELETE', body:JSON.stringify({ id:pedido.id }) })
     carregarPautas(); carregarPedidos(); setAba('pautas'); setDataSelecionada(pedido.data)
   }
+
+  const datasP = getDatasUnicas(pautas)
+  const datasR = getDatasUnicas(relatorios)
+  const datasV = getDatasUnicas(previsoes)
+  const datasPed = [...new Set(pedidos.map(p => p.data))].sort()
+  const datas = aba==='pautas'?datasP:aba==='relatorios'?datasR:aba==='previsoes'?datasV:datasPed
+  const itensDoDia = dataSelecionada ? aba==='pautas'?getItensDoDia(pautas,dataSelecionada):aba==='relatorios'?getItensDoDia(relatorios,dataSelecionada):aba==='previsoes'?getItensDoDia(previsoes,dataSelecionada):pedidos.filter(p=>p.data===dataSelecionada) : []
 
   const contatosFiltrados = contatos.filter(c => c.nome.toLowerCase().includes(busca.toLowerCase())||(c.cargo||'').toLowerCase().includes(busca.toLowerCase()))
   const q = buscaGeral.toLowerCase()
@@ -633,6 +638,7 @@ export default function Home() {
     { id:'metricas', label:'📊 Métricas', cor:AMARELO },
   ]
 
+  const labelAba = aba==='pautas'?'pauta':aba==='relatorios'?'relatório':aba==='previsoes'?'previsão':'pedido'
   const labelAbaSel = aba==='pautas'?'Nenhuma pauta selecionada':aba==='relatorios'?'Nenhum relatório selecionado':aba==='previsoes'?'Nenhuma previsão selecionada':'Nenhum pedido selecionado'
   const labelAbaPlural = aba==='pautas'?'pautas':aba==='relatorios'?'relatórios':aba==='previsoes'?'previsões':'pedidos'
   const iconeAba = aba==='pautas'?'📋':aba==='relatorios'?'📝':aba==='previsoes'?'🔭':'📥'
@@ -713,12 +719,12 @@ export default function Home() {
 
       {modalRelatorio && (
         <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.8)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:2000 }} onClick={() => setModalRelatorio(false)}>
-          <div style={{ background:'#1A1A1A', border:`1px solid ${BORDA}`, borderRadius:16, width:'90%', maxWidth:680, maxHeight:'92vh', display:'flex', flexDirection:'column', overflow:'hidden' }} onClick={e => e.stopPropagation()}>
+          <div style={{ background:'#1A1A1A', border:`1px solid ${BORDA}`, borderRadius:16, width:'90%', maxWidth:680, maxHeight:'90vh', display:'flex', flexDirection:'column', overflow:'hidden' }} onClick={e => e.stopPropagation()}>
             <div style={{ padding:'16px 20px', borderBottom:`1px solid ${BORDA}`, display:'flex', justifyContent:'space-between', alignItems:'center', flexShrink:0 }}>
               <span style={{ fontWeight:700, fontSize:15, color:AMARELO }}>📋 Relatório do dia</span>
               <button onClick={() => setModalRelatorio(false)} style={{ background:'none', border:'none', color:SUBTEXTO, cursor:'pointer', fontSize:18 }}>✕</button>
             </div>
-            <div style={{ overflowY:'auto', padding:'20px', background:'#fff', color:'#111', fontFamily:'Arial, sans-serif', fontSize:14, lineHeight:1.6 }}>
+            <div style={{ flex:1, overflowY:'auto', padding:'20px', background:'#fff', color:'#111', fontFamily:'Arial, sans-serif', fontSize:14, lineHeight:1.6 }}>
               {gerando && (
                 <div style={{ display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', height:200, gap:12 }}>
                   <div style={{ width:32, height:32, border:'3px solid #eee', borderTop:`3px solid ${AMARELO}`, borderRadius:'50%', animation:'spin 0.8s linear infinite' }} />
@@ -732,7 +738,6 @@ export default function Home() {
               <div style={{ padding:'14px 20px', borderTop:`1px solid ${BORDA}`, flexShrink:0, background:'#111', display:'flex', justifyContent:'flex-end', gap:8 }}>
                 <button onClick={() => setModalRelatorio(false)} style={{ background:'transparent', border:`1px solid ${BORDA}`, borderRadius:8, padding:'9px 18px', cursor:'pointer', color:SUBTEXTO, fontSize:13 }}>Fechar</button>
                 <button onClick={() => gerarRelatorio()} style={{ background:'#222', border:`1px solid ${BORDA}`, borderRadius:8, padding:'9px 18px', cursor:'pointer', color:TEXTO, fontSize:13, fontWeight:600 }}>🔄 Regerar</button>
-                <button onClick={copiarRelatorio} style={{ background: copiado ? VERDE : '#222', color: copiado ? '#fff' : TEXTO, border:`1px solid ${copiado ? VERDE : BORDA}`, borderRadius:8, padding:'9px 18px', cursor:'pointer', fontSize:13, fontWeight:600, transition:'all 0.2s' }}>{copiado ? '✅ Copiado!' : '📋 Copiar'}</button>
                 <button onClick={baixarPDF} style={{ background:AMARELO, color:'#000', border:'none', borderRadius:8, padding:'9px 20px', cursor:'pointer', fontWeight:700, fontSize:13 }}>⬇️ Baixar PDF</button>
               </div>
             )}
