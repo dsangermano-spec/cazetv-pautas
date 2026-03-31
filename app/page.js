@@ -723,7 +723,7 @@ export default function Home() {
         {datas.length > 0 && <p style={{ margin:0, fontSize:12, color:'#444' }}>{datas.length} {datas.length===1?'data':'datas'} com {labelAbaPlural} cadastrados</p>}
       </div>
     )
-  }
+  
 
   return (
     <main style={{ minHeight:'100vh', background:ESCURO, color:TEXTO, fontFamily:"'Inter','Helvetica Neue',sans-serif", display:'flex', flexDirection:'column' }}>
