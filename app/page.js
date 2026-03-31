@@ -402,13 +402,7 @@ function AbaMetricas({ metricas, onSalvar, onDeletar, onEditar, pautas }) {
                         : <span style={{ background:'#2a0a0a', color:'#ff4444', border:'0.5px solid #ff4444', borderRadius:20, padding:'2px 10px', fontSize:11, fontWeight:700 }}>✗ Não</span>
                       }
                     </td>
-                    <td style={{ padding:'9px 8px', color:AMARELO, fontWeight:700, borderBottom:`0.5px solid ${BORDA}` }}>
-                      <div>{formatViews(m.views)}</div>
-                      {m.postsInsta && <div style={{ fontSize:10, color:'#FFD600', opacity:0.7 }}>📸 {m.postsInsta} posts</div>}
-                      {m.entradasYT && <div style={{ fontSize:10, color:'#E1306C', opacity:0.9 }}>▶ {m.entradasYT} ent. YT</div>}
-                      {m.entradasProg && <div style={{ fontSize:10, color:'#9146FF', opacity:0.9 }}>📺 {m.entradasProg} ent. Prog</div>}
-                      {m.entradasTrans && <div style={{ fontSize:10, color:'#00b4d8', opacity:0.9 }}>📡 {m.entradasTrans} ent. Trans</div>}
-                    </td>
+                    <td style={{ padding:'9px 8px', color:AMARELO, fontWeight:700, borderBottom:`0.5px solid ${BORDA}` }}>{formatViews(m.views)}</td>
                     <td style={{ padding:'9px 8px', borderBottom:`0.5px solid ${BORDA}`, whiteSpace:'nowrap' }}>
                       <button onClick={() => iniciarEdicao(m)} style={{ background:'none', border:'none', color:AMARELO, cursor:'pointer', fontSize:12, fontWeight:600, marginRight:8 }}>Editar</button>
                       <button onClick={() => onDeletar(m.id)} style={{ background:'none', border:'none', color:'#ff4444', cursor:'pointer', fontSize:12, fontWeight:600 }}>Deletar</button>
