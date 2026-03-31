@@ -379,6 +379,9 @@ export default function Home() {
   const [editandoPrev, setEditandoPrev] = useState(null)
   const [formPedido, setFormPedido] = useState(VAZIO_PEDIDO)
   const [editandoPedido, setEditandoPedido] = useState(null)
+  const [modalRelatorio, setModalRelatorio] = useState(false)
+  const [relatorioGerado, setRelatorioGerado] = useState('')
+  const [gerando, setGerando] = useState(false)
 
   useEffect(() => { carregarTudo() }, [])
 
@@ -417,6 +420,92 @@ export default function Home() {
   async function carregarContatos() { const r = await fetch('/api/contatos'); setContatos((await r.json()).sort((a,b) => a.nome.localeCompare(b.nome))) }
   async function carregarPedidos() { const r = await fetch('/api/pedidos'); setPedidos((await r.json()).sort((a,b) => a.data.localeCompare(b.data))) }
   async function carregarMetricas() { const r = await fetch('/api/metricas'); setMetricas((await r.json()).sort((a,b) => b.data.localeCompare(a.data))) }
+
+  async function gerarRelatorio() {
+    setGerando(true)
+    setRelatorioGerado('')
+    const hoje = new Date().toISOString().split('T')[0]
+    const amanha = new Date(Date.now() + 86400000).toISOString().split('T')[0]
+    const pautasHoje = pautas.filter(p => getDatasNoPeriodo(p.data, p.dataFim).includes(hoje))
+    const relHoje = relatorios.filter(r => r.data === hoje)
+    const pautasAmanha = pautas.filter(p => getDatasNoPeriodo(p.data, p.dataFim).includes(amanha))
+    const dataFormatada = new Date(hoje + 'T12:00:00').toLocaleDateString('pt-BR', { weekday:'long', day:'2-digit', month:'long', year:'numeric' }).toUpperCase()
+    const dataAmanhaFormatada = new Date(amanha + 'T12:00:00').toLocaleDateString('pt-BR', { weekday:'long', day:'2-digit', month:'long' }).toUpperCase()
+
+    const prompt = `Você é o assistente editorial da CazéTV. Gere um relatório diário de pautas em HTML simples (sem <!DOCTYPE>, sem <html>, sem <head>, sem <body> — apenas o conteúdo interno), seguindo exatamente este modelo visual:
+
+MODELO:
+<p style="font-size:11px;color:#999;margin:0;text-transform:uppercase;letter-spacing:1px;">RELATÓRIO DIÁRIO · ${dataFormatada}</p>
+<h1 style="font-size:22px;font-weight:800;margin:4px 0 14px;color:#111;">Pautas do dia — CazéTV</h1>
+<div style="background:#1a7a4a;color:#fff;padding:10px 16px;border-radius:8px;text-align:center;font-weight:700;font-size:13px;margin-bottom:16px;">
+  Ver detalhes completos → cazetv-pautas.vercel.app
+</div>
+<hr style="border:none;border-top:1px solid #eee;margin:12px 0"/>
+<p style="font-size:10px;font-weight:700;color:#888;letter-spacing:1px;margin:0 0 8px;text-transform:uppercase;">HOJE — ${dataFormatada.split(',')[0]}</p>
+<!-- Um card por pauta de hoje: -->
+<div style="border-left:3px solid #ccc;padding:8px 12px;margin-bottom:8px;background:#fafafa;border-radius:0 6px 6px 0;">
+  <strong style="font-size:13px;color:#111;">🎙 [Título da pauta]</strong><br/>
+  <span style="font-size:12px;color:#555;">[Repórter] · [Resumo em 1 linha com local/objetivo]</span>
+</div>
+<!-- Se houver relatórios do dia, adicionar após as pautas com fundo levemente diferente -->
+<hr style="border:none;border-top:1px solid #eee;margin:12px 0"/>
+<p style="font-size:10px;font-weight:700;color:#888;letter-spacing:1px;margin:0 0 8px;text-transform:uppercase;">PREVISÃO — ${dataAmanhaFormatada}</p>
+<!-- Um card por pauta de amanhã com borda tracejada. Se mencionar "ao vivo", adicionar badge vermelho. Se mencionar "redes", badge verde. -->
+<div style="border-left:3px dashed #ccc;padding:8px 12px;margin-bottom:8px;background:#fafafa;border-radius:0 6px 6px 0;">
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
+    <strong style="font-size:13px;color:#111;">[Título]</strong>
+    <!-- badges opcionais: <span style="background:#e53935;color:#fff;font-size:10px;font-weight:700;padding:2px 7px;border-radius:4px;">Ao vivo</span> -->
+  </div>
+  <span style="font-size:12px;color:#555;">[Repórter] · [Local] · [Horário se houver]</span>
+</div>
+<hr style="border:none;border-top:1px solid #eee;margin:12px 0"/>
+<p style="font-size:11px;color:#aaa;margin:0;">[N] cobertura(s) prevista(s) · [Cidades]</p>
+
+DADOS REAIS:
+PAUTAS DE HOJE (${hoje}):
+${pautasHoje.length > 0 ? pautasHoje.map(p => `- ${p.titulo} | Repórter: ${p.reporter} | ${p.conteudo?.slice(0,300)}`).join('\n') : 'Nenhuma pauta cadastrada para hoje.'}
+
+RELATÓRIOS DE HOJE:
+${relHoje.length > 0 ? relHoje.map(r => `- ${r.reporter}: ${r.texto?.slice(0,200)}`).join('\n') : 'Nenhum relatório.'}
+
+PAUTAS DE AMANHÃ (${amanha}):
+${pautasAmanha.length > 0 ? pautasAmanha.map(p => `- ${p.titulo} | Repórter: ${p.reporter} | ${p.conteudo?.slice(0,300)}`).join('\n') : 'Nenhuma pauta cadastrada para amanhã.'}
+
+Gere APENAS o HTML do relatório, sem comentários, sem explicações, sem markdown.`
+
+    try {
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-20250514',
+          max_tokens: 1500,
+          messages: [{ role: 'user', content: prompt }]
+        })
+      })
+      const data = await res.json()
+      const html = data.content?.find(b => b.type === 'text')?.text || '<p>Erro ao gerar relatório.</p>'
+      setRelatorioGerado(html)
+    } catch(e) {
+      setRelatorioGerado('<p style="color:red">Erro ao conectar com a API. Tente novamente.</p>')
+    }
+    setGerando(false)
+  }
+
+  function baixarPDF() {
+    const hoje = new Date().toISOString().split('T')[0]
+    const dataLabel = new Date(hoje + 'T12:00:00').toLocaleDateString('pt-BR', { weekday:'long', day:'2-digit', month:'long', year:'numeric' })
+    const janela = window.open('', '_blank')
+    janela.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Pautas CazéTV — ${dataLabel}</title>
+    <style>
+      body { font-family: Arial, sans-serif; font-size: 13px; color: #111; padding: 32px 40px; max-width: 680px; margin: 0 auto; }
+      @media print { body { padding: 0; } @page { margin: 20mm; } }
+    </style>
+    </head><body>${relatorioGerado}</body></html>`)
+    janela.document.close()
+    janela.focus()
+    setTimeout(() => { janela.print() }, 400)
+  }
 
   function getDatasUnicas(lista) {
     const set = new Set()
@@ -628,7 +717,49 @@ export default function Home() {
       <header style={{ background:'#000', borderBottom:`3px solid ${AMARELO}`, padding:'0.85rem 1.5rem', display:'flex', alignItems:'center', gap:14, flexShrink:0 }}>
         <span style={{ background:AMARELO, color:'#000', fontWeight:900, fontSize:17, padding:'5px 11px', borderRadius:7, letterSpacing:-0.5 }}>CazéTV</span>
         <span style={{ fontWeight:700, fontSize:16, color:TEXTO, letterSpacing:0.3 }}>PAUTAS & RELATÓRIOS</span>
+        <div style={{ marginLeft:'auto' }}>
+          <button onClick={() => { setModalRelatorio(true); gerarRelatorio() }} style={{ background:AMARELO, color:'#000', border:'none', borderRadius:8, padding:'8px 16px', cursor:'pointer', fontWeight:700, fontSize:13 }}>
+            📧 Relatório do dia
+          </button>
+        </div>
       </header>
+
+      {/* MODAL RELATÓRIO */}
+      {modalRelatorio && (
+        <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.8)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:2000 }} onClick={() => setModalRelatorio(false)}>
+          <div style={{ background:'#1A1A1A', border:`1px solid ${BORDA}`, borderRadius:16, width:'90%', maxWidth:680, maxHeight:'90vh', display:'flex', flexDirection:'column', overflow:'hidden' }} onClick={e => e.stopPropagation()}>
+
+            {/* Modal header */}
+            <div style={{ padding:'16px 20px', borderBottom:`1px solid ${BORDA}`, display:'flex', justifyContent:'space-between', alignItems:'center', flexShrink:0 }}>
+              <span style={{ fontWeight:700, fontSize:15, color:AMARELO }}>📧 Relatório do dia</span>
+              <button onClick={() => setModalRelatorio(false)} style={{ background:'none', border:'none', color:SUBTEXTO, cursor:'pointer', fontSize:18 }}>✕</button>
+            </div>
+
+            {/* Preview */}
+            <div style={{ flex:1, overflowY:'auto', padding:'20px', background:'#fff', color:'#111', fontFamily:'Arial, sans-serif', fontSize:14, lineHeight:1.6 }}>
+              {gerando && (
+                <div style={{ display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', height:200, gap:12 }}>
+                  <div style={{ width:32, height:32, border:'3px solid #eee', borderTop:`3px solid ${AMARELO}`, borderRadius:'50%', animation:'spin 0.8s linear infinite' }} />
+                  <p style={{ color:'#888', fontSize:13 }}>Gerando relatório com IA...</p>
+                  <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
+                </div>
+              )}
+              {!gerando && relatorioGerado && (
+                <div dangerouslySetInnerHTML={{ __html: relatorioGerado }} />
+              )}
+            </div>
+
+            {/* Rodapé do modal */}
+            {!gerando && relatorioGerado && (
+              <div style={{ padding:'14px 20px', borderTop:`1px solid ${BORDA}`, flexShrink:0, background:'#111', display:'flex', justifyContent:'flex-end', gap:8 }}>
+                <button onClick={() => setModalRelatorio(false)} style={{ background:'transparent', border:`1px solid ${BORDA}`, borderRadius:8, padding:'9px 18px', cursor:'pointer', color:SUBTEXTO, fontSize:13 }}>Fechar</button>
+                <button onClick={() => gerarRelatorio()} style={{ background:'#222', border:`1px solid ${BORDA}`, borderRadius:8, padding:'9px 18px', cursor:'pointer', color:TEXTO, fontSize:13, fontWeight:600 }}>🔄 Regerar</button>
+                <button onClick={baixarPDF} style={{ background:AMARELO, color:'#000', border:'none', borderRadius:8, padding:'9px 20px', cursor:'pointer', fontWeight:700, fontSize:13 }}>⬇️ Baixar PDF</button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* ABAS */}
       <div style={{ display:'flex', gap:2, padding:'6px 10px', background:'#0A0A0A', borderBottom:`1px solid ${BORDA}`, flexShrink:0, flexWrap:'wrap' }}>
