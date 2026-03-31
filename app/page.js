@@ -383,14 +383,15 @@ export default function Home() {
   const [relatorioGerado, setRelatorioGerado] = useState('')
   const [gerando, setGerando] = useState(false)
 
+  const hasSidebar = !['contatos','busca','calendario','metricas'].includes(aba)
+  const corAba = aba==='pedidos'?LARANJA:AMARELO
+
   useEffect(() => { carregarTudo() }, [])
 
-  // Ao trocar de aba, seleciona a data mais próxima de hoje automaticamente
   useEffect(() => {
     if (!hasSidebar) return
     if (datas.length === 0) return
     const hoje = new Date().toISOString().split('T')[0]
-    // Pega a data mais próxima de hoje (preferindo a mais recente que não passou)
     const futura = datas.find(d => d >= hoje)
     setDataSelecionada(futura || datas[datas.length - 1])
   }, [aba, pautas, relatorios, previsoes, pedidos])
@@ -438,7 +439,7 @@ export default function Home() {
       const data = await res.json()
       setRelatorioGerado(data.html || '<p>Erro ao gerar relatório.</p>')
     } catch(e) {
-      setRelatorioGerado('<p style="color:red">Erro ao conectar com a API. Tente novamente.</p>')
+      setRelatorioGerado('<p style="color:red">Erro ao conectar. Tente novamente.</p>')
     }
     setGerando(false)
   }
@@ -448,10 +449,8 @@ export default function Home() {
     const dataLabel = new Date(hoje + 'T12:00:00').toLocaleDateString('pt-BR', { weekday:'long', day:'2-digit', month:'long', year:'numeric' })
     const janela = window.open('', '_blank')
     janela.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Pautas CazéTV — ${dataLabel}</title>
-    <style>
-      body { font-family: Arial, sans-serif; font-size: 13px; color: #111; padding: 32px 40px; max-width: 680px; margin: 0 auto; }
-      @media print { body { padding: 0; } @page { margin: 20mm; } }
-    </style>
+    <style>body { font-family: Arial, sans-serif; font-size: 13px; color: #111; padding: 32px 40px; max-width: 680px; margin: 0 auto; }
+    @media print { body { padding: 0; } @page { margin: 20mm; } }</style>
     </head><body>${relatorioGerado}</body></html>`)
     janela.document.close()
     janela.focus()
@@ -568,8 +567,10 @@ export default function Home() {
     { id:'metricas', label:'📊 Métricas', cor:AMARELO },
   ]
 
-  const hasSidebar = !['contatos','busca','calendario','metricas'].includes(aba)
-  const corAba = aba==='pedidos'?LARANJA:AMARELO
+  const labelAba = aba==='pautas'?'pauta':aba==='relatorios'?'relatório':aba==='previsoes'?'previsão':'pedido'
+  const labelAbaSel = aba==='pautas'?'Nenhuma pauta selecionada':aba==='relatorios'?'Nenhum relatório selecionado':aba==='previsoes'?'Nenhuma previsão selecionada':'Nenhum pedido selecionado'
+  const labelAbaPlural = aba==='pautas'?'pautas':aba==='relatorios'?'relatórios':aba==='previsoes'?'previsões':'pedidos'
+  const iconeAba = aba==='pautas'?'📋':aba==='relatorios'?'📝':aba==='previsoes'?'🔭':'📥'
 
   function PeriodoTag({ item }) {
     if (!item.dataFim||item.dataFim===item.data) return null
@@ -616,92 +617,52 @@ export default function Home() {
     )
   }
 
-  // ─── EMPTY STATE: mostrado quando não tem data selecionada ────────────────
-  const labelAba = aba==='pautas'?'pauta':aba==='relatorios'?'relatório':aba==='previsoes'?'previsão':'pedido'
-  const labelAbaSel = aba==='pautas'?'Nenhuma pauta selecionada':aba==='relatorios'?'Nenhum relatório selecionado':aba==='previsoes'?'Nenhuma previsão selecionada':'Nenhum pedido selecionado'
-  const labelAbaPlural = aba==='pautas'?'pautas':aba==='relatorios'?'relatórios':aba==='previsoes'?'previsões':'pedidos'
-  const iconeAba = aba==='pautas'?'📋':aba==='relatorios'?'📝':aba==='previsoes'?'🔭':'📥'
-
   function EmptyState() {
     return (
-      <div style={{
-        display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center',
-        flex:1, minHeight:0, padding:'3rem 2rem', gap:20, textAlign:'center',
-      }}>
-        <div style={{
-          width:72, height:72, borderRadius:20,
-          background:'#1E1E1E', border:`1.5px dashed ${BORDA}`,
-          display:'flex', alignItems:'center', justifyContent:'center', fontSize:32,
-        }}>{iconeAba}</div>
+      <div style={{ display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', flex:1, minHeight:0, padding:'3rem 2rem', gap:20, textAlign:'center' }}>
+        <div style={{ width:72, height:72, borderRadius:20, background:'#1E1E1E', border:`1.5px dashed ${BORDA}`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:32 }}>{iconeAba}</div>
         <div>
-          <p style={{ margin:0, fontSize:16, fontWeight:700, color:TEXTO }}>
-            {labelAbaSel}
-          </p>
-          <p style={{ margin:'6px 0 0', fontSize:13, color:SUBTEXTO, maxWidth:280, lineHeight:1.6 }}>
-            Escolha uma data na lateral para ver os {labelAbaPlural}, ou crie um novo registro.
-          </p>
+          <p style={{ margin:0, fontSize:16, fontWeight:700, color:TEXTO }}>{labelAbaSel}</p>
+          <p style={{ margin:'6px 0 0', fontSize:13, color:SUBTEXTO, maxWidth:280, lineHeight:1.6 }}>Escolha uma data na lateral para ver os {labelAbaPlural}, ou crie um novo registro.</p>
         </div>
-        <button
-          onClick={() => setMostrarForm(true)}
-          style={{
-            background:corAba, color:aba==='pedidos'?'#fff':'#000',
-            border:'none', borderRadius:10, padding:'11px 24px',
-            cursor:'pointer', fontWeight:700, fontSize:14,
-            boxShadow:`0 0 20px ${corAba}33`,
-          }}
-        >
+        <button onClick={() => setMostrarForm(true)} style={{ background:corAba, color:aba==='pedidos'?'#fff':'#000', border:'none', borderRadius:10, padding:'11px 24px', cursor:'pointer', fontWeight:700, fontSize:14, boxShadow:`0 0 20px ${corAba}33` }}>
           + {aba==='pautas'?'Nova pauta':aba==='relatorios'?'Novo relatório':aba==='previsoes'?'Nova previsão':'Novo pedido'}
         </button>
-        {datas.length > 0 && (
-          <p style={{ margin:0, fontSize:12, color:'#444' }}>
-            {datas.length} {datas.length === 1 ? 'data' : 'datas'} com {labelAbaPlural} cadastrados
-          </p>
-        )}
+        {datas.length > 0 && <p style={{ margin:0, fontSize:12, color:'#444' }}>{datas.length} {datas.length===1?'data':'datas'} com {labelAbaPlural} cadastrados</p>}
       </div>
     )
   }
-  // ─────────────────────────────────────────────────────────────────────────
 
   return (
     <main style={{ minHeight:'100vh', background:ESCURO, color:TEXTO, fontFamily:"'Inter','Helvetica Neue',sans-serif", display:'flex', flexDirection:'column' }}>
 
-      {/* HEADER */}
       <header style={{ background:'#000', borderBottom:`3px solid ${AMARELO}`, padding:'0.85rem 1.5rem', display:'flex', alignItems:'center', gap:14, flexShrink:0 }}>
         <span style={{ background:AMARELO, color:'#000', fontWeight:900, fontSize:17, padding:'5px 11px', borderRadius:7, letterSpacing:-0.5 }}>CazéTV</span>
         <span style={{ fontWeight:700, fontSize:16, color:TEXTO, letterSpacing:0.3 }}>PAUTAS & RELATÓRIOS</span>
         <div style={{ marginLeft:'auto' }}>
           <button onClick={() => { setModalRelatorio(true); gerarRelatorio() }} style={{ background:AMARELO, color:'#000', border:'none', borderRadius:8, padding:'8px 16px', cursor:'pointer', fontWeight:700, fontSize:13 }}>
-            📧 Relatório do dia
+            📋 Relatório do dia
           </button>
         </div>
       </header>
 
-      {/* MODAL RELATÓRIO */}
       {modalRelatorio && (
         <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.8)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:2000 }} onClick={() => setModalRelatorio(false)}>
           <div style={{ background:'#1A1A1A', border:`1px solid ${BORDA}`, borderRadius:16, width:'90%', maxWidth:680, maxHeight:'90vh', display:'flex', flexDirection:'column', overflow:'hidden' }} onClick={e => e.stopPropagation()}>
-
-            {/* Modal header */}
             <div style={{ padding:'16px 20px', borderBottom:`1px solid ${BORDA}`, display:'flex', justifyContent:'space-between', alignItems:'center', flexShrink:0 }}>
-              <span style={{ fontWeight:700, fontSize:15, color:AMARELO }}>📧 Relatório do dia</span>
+              <span style={{ fontWeight:700, fontSize:15, color:AMARELO }}>📋 Relatório do dia</span>
               <button onClick={() => setModalRelatorio(false)} style={{ background:'none', border:'none', color:SUBTEXTO, cursor:'pointer', fontSize:18 }}>✕</button>
             </div>
-
-            {/* Preview */}
             <div style={{ flex:1, overflowY:'auto', padding:'20px', background:'#fff', color:'#111', fontFamily:'Arial, sans-serif', fontSize:14, lineHeight:1.6 }}>
               {gerando && (
                 <div style={{ display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', height:200, gap:12 }}>
                   <div style={{ width:32, height:32, border:'3px solid #eee', borderTop:`3px solid ${AMARELO}`, borderRadius:'50%', animation:'spin 0.8s linear infinite' }} />
-                  <p style={{ color:'#888', fontSize:13 }}>Gerando relatório com IA...</p>
+                  <p style={{ color:'#888', fontSize:13 }}>Gerando relatório...</p>
                   <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
                 </div>
               )}
-              {!gerando && relatorioGerado && (
-                <div dangerouslySetInnerHTML={{ __html: relatorioGerado }} />
-              )}
+              {!gerando && relatorioGerado && <div dangerouslySetInnerHTML={{ __html: relatorioGerado }} />}
             </div>
-
-            {/* Rodapé do modal */}
             {!gerando && relatorioGerado && (
               <div style={{ padding:'14px 20px', borderTop:`1px solid ${BORDA}`, flexShrink:0, background:'#111', display:'flex', justifyContent:'flex-end', gap:8 }}>
                 <button onClick={() => setModalRelatorio(false)} style={{ background:'transparent', border:`1px solid ${BORDA}`, borderRadius:8, padding:'9px 18px', cursor:'pointer', color:SUBTEXTO, fontSize:13 }}>Fechar</button>
@@ -713,7 +674,6 @@ export default function Home() {
         </div>
       )}
 
-      {/* ABAS */}
       <div style={{ display:'flex', gap:2, padding:'6px 10px', background:'#0A0A0A', borderBottom:`1px solid ${BORDA}`, flexShrink:0, flexWrap:'wrap' }}>
         {abas.map(a => (
           <button key={a.id} onClick={() => { setAba(a.id); setDataSelecionada(null); setMostrarForm(false); setBusca(''); setBuscaGeral('') }} style={{
@@ -725,19 +685,10 @@ export default function Home() {
         ))}
       </div>
 
-      {/* BODY */}
       <div style={{ display:'flex', flex:1, overflow:'hidden', minHeight:0 }}>
 
-        {/* SIDEBAR — largura fixa, compacta */}
         {hasSidebar && (
-          <aside style={{
-            width:220, flexShrink:0,
-            borderRight:`1px solid ${BORDA}`,
-            padding:'12px 8px',
-            overflowY:'auto',
-            display:'flex', flexDirection:'column', gap:4,
-            background:'#0D0D0D',
-          }}>
+          <aside style={{ width:220, flexShrink:0, borderRight:`1px solid ${BORDA}`, padding:'12px 8px', overflowY:'auto', display:'flex', flexDirection:'column', gap:4, background:'#0D0D0D' }}>
             <p style={{ fontSize:10, color:SUBTEXTO, fontWeight:700, textTransform:'uppercase', letterSpacing:1, padding:'0 6px', margin:'0 0 6px' }}>Datas</p>
             {loading && (
               <div style={{ padding:'0 6px', display:'flex', flexDirection:'column', gap:6 }}>
@@ -761,35 +712,26 @@ export default function Home() {
                   transition:'all 0.1s',
                 }}>
                   <span style={{ display:'block', fontSize:13, fontWeight:700 }}>{formatarDataCurta(d)}</span>
-                  <span style={{ display:'block', fontSize:11, opacity:0.65, marginTop:2 }}>
-                    {count} {aba==='pautas'?'pauta(s)':aba==='relatorios'?'relatório(s)':aba==='previsoes'?'previsão(ões)':'pedido(s)'}
-                  </span>
+                  <span style={{ display:'block', fontSize:11, opacity:0.65, marginTop:2 }}>{count} {aba==='pautas'?'pauta(s)':aba==='relatorios'?'relatório(s)':aba==='previsoes'?'previsão(ões)':'pedido(s)'}</span>
                 </button>
               )
             })}
-            <button
-              onClick={() => { setMostrarForm(true); setDataSelecionada(null); cancelar() }}
-              style={{ marginTop:8, width:'100%', padding:'7px 0', background:'transparent', border:`1px dashed #333`, borderRadius:8, color:'#555', fontSize:11, cursor:'pointer' }}
-            >+ nova data</button>
+            <button onClick={() => { setMostrarForm(true); setDataSelecionada(null); cancelar() }} style={{ marginTop:8, width:'100%', padding:'7px 0', background:'transparent', border:`1px dashed #333`, borderRadius:8, color:'#555', fontSize:11, cursor:'pointer' }}>+ nova data</button>
           </aside>
         )}
 
-        {/* MÉTRICAS */}
         {aba === 'metricas' && (
           <AbaMetricas
-            metricas={metricas}
-            pautas={pautas}
+            metricas={metricas} pautas={pautas}
             onSalvar={async (m) => { await fetch('/api/metricas',{method:'POST',body:JSON.stringify(m)}); carregarMetricas() }}
             onEditar={async (m) => { await fetch('/api/metricas',{method:'PUT',body:JSON.stringify(m)}); carregarMetricas() }}
             onDeletar={async (id) => { if(!confirm('Deletar?'))return; await fetch('/api/metricas',{method:'DELETE',body:JSON.stringify({id})}); carregarMetricas() }}
           />
         )}
 
-        {/* SEÇÃO PRINCIPAL */}
         {aba !== 'metricas' && (
           <section style={{ flex:1, overflowY:'auto', padding:'1.5rem', display:'flex', flexDirection:'column' }}>
 
-            {/* CALENDÁRIO */}
             {aba==='calendario' && (
               <>
                 <Calendario pautas={pautas} relatorios={relatorios} previsoes={previsoes} pedidos={pedidos} onDiaClick={setDiaModal}/>
@@ -810,7 +752,6 @@ export default function Home() {
               </>
             )}
 
-            {/* BUSCA */}
             {aba==='busca' && (
               <>
                 <input type="text" placeholder="🔍 Digite uma palavra para buscar..." value={buscaGeral} onChange={e => setBuscaGeral(e.target.value)} autoFocus style={{...inp,marginTop:0,marginBottom:'1.5rem',fontSize:15}}/>
@@ -835,7 +776,6 @@ export default function Home() {
               </>
             )}
 
-            {/* CONTATOS */}
             {aba==='contatos' && (
               <>
                 <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16, flexWrap:'wrap', gap:12 }}>
@@ -873,7 +813,6 @@ export default function Home() {
               </>
             )}
 
-            {/* FORMULÁRIO (pautas / relatorios / previsoes / pedidos) */}
             {hasSidebar && mostrarForm && (
               <div style={{ background:CARD, border:`1px solid ${aba==='pedidos'?LARANJA:BORDA}`, borderRadius:16, padding:'1.5rem', marginBottom:'1.5rem' }}>
                 <h2 style={{ margin:'0 0 1rem', fontSize:15, fontWeight:700, color:corAba }}>{(editandoPauta||editandoRel||editandoPrev||editandoPedido)?'✏️ Editar':`+ ${aba==='pautas'?'Nova Pauta':aba==='relatorios'?'Novo Relatório':aba==='previsoes'?'Nova Previsão':'Novo Pedido'}`}</h2>
@@ -921,7 +860,6 @@ export default function Home() {
               </div>
             )}
 
-            {/* CABEÇALHO DO DIA SELECIONADO */}
             {hasSidebar && dataSelecionada && !mostrarForm && (
               <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16 }}>
                 <div style={{ display:'flex', alignItems:'center', gap:10 }}>
@@ -934,7 +872,6 @@ export default function Home() {
               </div>
             )}
 
-            {/* CARDS DO DIA */}
             {hasSidebar && dataSelecionada && !mostrarForm && (
               <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
                 {itensDoDia.length===0&&<p style={{ color:SUBTEXTO, fontSize:14 }}>Nenhum registro para este dia.</p>}
@@ -986,7 +923,6 @@ export default function Home() {
               </div>
             )}
 
-            {/* EMPTY STATE */}
             {hasSidebar && !dataSelecionada && !mostrarForm && <EmptyState />}
 
           </section>
