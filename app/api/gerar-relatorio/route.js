@@ -59,18 +59,18 @@ function cardAmanha(p) {
 }
 
 export async function GET(req) {
-  return await gerarHTML()
+  return await gerarHTML(req)
 }
 
 export async function POST(req) {
-  return await gerarHTML()
+  return await gerarHTML(req)
 }
 
-async function gerarHTML() {
+async function gerarHTML(req) {
   try {
-    const baseUrl = process.env.VERCEL_URL
-      ? `https://${process.env.VERCEL_URL}`
-      : 'http://localhost:3000'
+    const host = req.headers.get('host')
+    const proto = host?.includes('localhost') ? 'http' : 'https'
+    const baseUrl = `${proto}://${host}`
 
     const [resPautas, resRelatorios] = await Promise.all([
       fetch(`${baseUrl}/api/pautas`).then(r => r.json()),
