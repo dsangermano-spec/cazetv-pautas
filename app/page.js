@@ -407,9 +407,6 @@ function AbaMetricas({ metricas, onSalvar, onDeletar, onEditar, pautas }) {
 }
 
 export default function Home() {
-  const hasSidebar = !['contatos','busca','calendario','metricas'].includes(aba)
-  const corAba = aba==='pedidos'?LARANJA:AMARELO
-
   const [aba, setAba] = useState('pautas')
   const [pautas, setPautas] = useState([])
   const [relatorios, setRelatorios] = useState([])
@@ -439,6 +436,15 @@ export default function Home() {
   const [relatorioGerado, setRelatorioGerado] = useState('')
   const [gerando, setGerando] = useState(false)
   const [copiado, setCopiado] = useState(false)
+
+  const hasSidebar = !['contatos','busca','calendario','metricas'].includes(aba)
+  const corAba = aba==='pedidos'?LARANJA:AMARELO
+
+  const datasP = getDatasUnicas(pautas)
+  const datasR = getDatasUnicas(relatorios)
+  const datasV = getDatasUnicas(previsoes)
+  const datasPed = [...new Set(pedidos.map(p => p.data))].sort()
+  const datas = aba==='pautas'?datasP:aba==='relatorios'?datasR:aba==='previsoes'?datasV:datasPed
 
   useEffect(() => { carregarTudo() }, [])
 
@@ -545,13 +551,6 @@ export default function Home() {
     await fetch('/api/pedidos', { method:'DELETE', body:JSON.stringify({ id:pedido.id }) })
     carregarPautas(); carregarPedidos(); setAba('pautas'); setDataSelecionada(pedido.data)
   }
-
-  const datasP = getDatasUnicas(pautas)
-  const datasR = getDatasUnicas(relatorios)
-  const datasV = getDatasUnicas(previsoes)
-  const datasPed = [...new Set(pedidos.map(p => p.data))].sort()
-  const datas = aba==='pautas'?datasP:aba==='relatorios'?datasR:aba==='previsoes'?datasV:datasPed
-  const itensDoDia = dataSelecionada ? aba==='pautas'?getItensDoDia(pautas,dataSelecionada):aba==='relatorios'?getItensDoDia(relatorios,dataSelecionada):aba==='previsoes'?getItensDoDia(previsoes,dataSelecionada):pedidos.filter(p=>p.data===dataSelecionada) : []
 
   const contatosFiltrados = contatos.filter(c => c.nome.toLowerCase().includes(busca.toLowerCase())||(c.cargo||'').toLowerCase().includes(busca.toLowerCase()))
   const q = buscaGeral.toLowerCase()
