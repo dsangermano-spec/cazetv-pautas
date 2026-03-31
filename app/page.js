@@ -719,12 +719,12 @@ export default function Home() {
 
       {modalRelatorio && (
         <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.8)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:2000 }} onClick={() => setModalRelatorio(false)}>
-          <div style={{ background:'#1A1A1A', border:`1px solid ${BORDA}`, borderRadius:16, width:'90%', maxWidth:680, maxHeight:'90vh', display:'flex', flexDirection:'column', overflow:'hidden' }} onClick={e => e.stopPropagation()}>
+                      <div style={{ background:'#1A1A1A', border:`1px solid ${BORDA}`, borderRadius:16, width:'90%', maxWidth:680, maxHeight:'92vh', display:'flex', flexDirection:'column', overflow:'hidden' }} onClick={e => e.stopPropagation()}>
             <div style={{ padding:'16px 20px', borderBottom:`1px solid ${BORDA}`, display:'flex', justifyContent:'space-between', alignItems:'center', flexShrink:0 }}>
               <span style={{ fontWeight:700, fontSize:15, color:AMARELO }}>📋 Relatório do dia</span>
               <button onClick={() => setModalRelatorio(false)} style={{ background:'none', border:'none', color:SUBTEXTO, cursor:'pointer', fontSize:18 }}>✕</button>
             </div>
-            <div style={{ flex:1, overflowY:'auto', padding:'20px', background:'#fff', color:'#111', fontFamily:'Arial, sans-serif', fontSize:14, lineHeight:1.6 }}>
+            <div style={{ overflowY:'auto', padding:'20px', background:'#fff', color:'#111', fontFamily:'Arial, sans-serif', fontSize:14, lineHeight:1.6 }}>
               {gerando && (
                 <div style={{ display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', height:200, gap:12 }}>
                   <div style={{ width:32, height:32, border:'3px solid #eee', borderTop:`3px solid ${AMARELO}`, borderRadius:'50%', animation:'spin 0.8s linear infinite' }} />
