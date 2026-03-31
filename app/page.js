@@ -453,6 +453,7 @@ export default function Home() {
   const [modalRelatorio, setModalRelatorio] = useState(false)
   const [relatorioGerado, setRelatorioGerado] = useState('')
   const [gerando, setGerando] = useState(false)
+  const [copiado, setCopiado] = useState(false)
 
   const hasSidebar = !['contatos','busca','calendario','metricas'].includes(aba)
   const corAba = aba==='pedidos'?LARANJA:AMARELO
@@ -515,7 +516,27 @@ export default function Home() {
     setGerando(false)
   }
 
-  function baixarPDF() {
+  function copiarRelatorio() {
+    const blob = new Blob([relatorioGerado], { type: 'text/html' })
+    const clipItem = new ClipboardItem({ 'text/html': blob, 'text/plain': new Blob([relatorioGerado.replace(/<[^>]+>/g, '')], { type: 'text/plain' }) })
+    navigator.clipboard.write([clipItem]).then(() => {
+      setCopiado(true)
+      setTimeout(() => setCopiado(false), 2500)
+    }).catch(() => {
+      const el = document.createElement('div')
+      el.innerHTML = relatorioGerado
+      document.body.appendChild(el)
+      const range = document.createRange()
+      range.selectNode(el)
+      window.getSelection().removeAllRanges()
+      window.getSelection().addRange(range)
+      document.execCommand('copy')
+      window.getSelection().removeAllRanges()
+      document.body.removeChild(el)
+      setCopiado(true)
+      setTimeout(() => setCopiado(false), 2500)
+    })
+  }
     const hoje = new Date().toISOString().split('T')[0]
     const dataLabel = new Date(hoje + 'T12:00:00').toLocaleDateString('pt-BR', { weekday:'long', day:'2-digit', month:'long', year:'numeric' })
     const janela = window.open('', '_blank')
@@ -738,6 +759,7 @@ export default function Home() {
               <div style={{ padding:'14px 20px', borderTop:`1px solid ${BORDA}`, flexShrink:0, background:'#111', display:'flex', justifyContent:'flex-end', gap:8 }}>
                 <button onClick={() => setModalRelatorio(false)} style={{ background:'transparent', border:`1px solid ${BORDA}`, borderRadius:8, padding:'9px 18px', cursor:'pointer', color:SUBTEXTO, fontSize:13 }}>Fechar</button>
                 <button onClick={() => gerarRelatorio()} style={{ background:'#222', border:`1px solid ${BORDA}`, borderRadius:8, padding:'9px 18px', cursor:'pointer', color:TEXTO, fontSize:13, fontWeight:600 }}>🔄 Regerar</button>
+                <button onClick={copiarRelatorio} style={{ background: copiado ? VERDE : '#222', color: copiado ? '#fff' : TEXTO, border:`1px solid ${copiado ? VERDE : BORDA}`, borderRadius:8, padding:'9px 18px', cursor:'pointer', fontSize:13, fontWeight:600, transition:'all 0.2s' }}>{copiado ? '✅ Copiado!' : '📋 Copiar'}</button>
                 <button onClick={baixarPDF} style={{ background:AMARELO, color:'#000', border:'none', borderRadius:8, padding:'9px 20px', cursor:'pointer', fontWeight:700, fontSize:13 }}>⬇️ Baixar PDF</button>
               </div>
             )}
