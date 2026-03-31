@@ -474,18 +474,13 @@ ${pautasAmanha.length > 0 ? pautasAmanha.map(p => `- ${p.titulo} | Repórter: ${
 Gere APENAS o HTML do relatório, sem comentários, sem explicações, sem markdown.`
 
     try {
-      const res = await fetch('https://api.anthropic.com/v1/messages', {
+      const res = await fetch('/api/gerar-relatorio', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          model: 'claude-sonnet-4-20250514',
-          max_tokens: 1500,
-          messages: [{ role: 'user', content: prompt }]
-        })
+        body: JSON.stringify({ prompt }),
       })
       const data = await res.json()
-      const html = data.content?.find(b => b.type === 'text')?.text || '<p>Erro ao gerar relatório.</p>'
-      setRelatorioGerado(html)
+      setRelatorioGerado(data.html || '<p>Erro ao gerar relatório.</p>')
     } catch(e) {
       setRelatorioGerado('<p style="color:red">Erro ao conectar com a API. Tente novamente.</p>')
     }
