@@ -429,55 +429,11 @@ export default function Home() {
     const pautasHoje = pautas.filter(p => getDatasNoPeriodo(p.data, p.dataFim).includes(hoje))
     const relHoje = relatorios.filter(r => r.data === hoje)
     const pautasAmanha = pautas.filter(p => getDatasNoPeriodo(p.data, p.dataFim).includes(amanha))
-    const dataFormatada = new Date(hoje + 'T12:00:00').toLocaleDateString('pt-BR', { weekday:'long', day:'2-digit', month:'long', year:'numeric' }).toUpperCase()
-    const dataAmanhaFormatada = new Date(amanha + 'T12:00:00').toLocaleDateString('pt-BR', { weekday:'long', day:'2-digit', month:'long' }).toUpperCase()
-
-    const prompt = `Você é o assistente editorial da CazéTV. Gere um relatório diário de pautas em HTML simples (sem <!DOCTYPE>, sem <html>, sem <head>, sem <body> — apenas o conteúdo interno), seguindo exatamente este modelo visual:
-
-MODELO:
-<p style="font-size:11px;color:#999;margin:0;text-transform:uppercase;letter-spacing:1px;">RELATÓRIO DIÁRIO · ${dataFormatada}</p>
-<h1 style="font-size:22px;font-weight:800;margin:4px 0 14px;color:#111;">Pautas do dia — CazéTV</h1>
-<div style="background:#1a7a4a;color:#fff;padding:10px 16px;border-radius:8px;text-align:center;font-weight:700;font-size:13px;margin-bottom:16px;">
-  Ver detalhes completos → cazetv-pautas.vercel.app
-</div>
-<hr style="border:none;border-top:1px solid #eee;margin:12px 0"/>
-<p style="font-size:10px;font-weight:700;color:#888;letter-spacing:1px;margin:0 0 8px;text-transform:uppercase;">HOJE — ${dataFormatada.split(',')[0]}</p>
-<!-- Um card por pauta de hoje: -->
-<div style="border-left:3px solid #ccc;padding:8px 12px;margin-bottom:8px;background:#fafafa;border-radius:0 6px 6px 0;">
-  <strong style="font-size:13px;color:#111;">🎙 [Título da pauta]</strong><br/>
-  <span style="font-size:12px;color:#555;">[Repórter] · [Resumo em 1 linha com local/objetivo]</span>
-</div>
-<!-- Se houver relatórios do dia, adicionar após as pautas com fundo levemente diferente -->
-<hr style="border:none;border-top:1px solid #eee;margin:12px 0"/>
-<p style="font-size:10px;font-weight:700;color:#888;letter-spacing:1px;margin:0 0 8px;text-transform:uppercase;">PREVISÃO — ${dataAmanhaFormatada}</p>
-<!-- Um card por pauta de amanhã com borda tracejada. Se mencionar "ao vivo", adicionar badge vermelho. Se mencionar "redes", badge verde. -->
-<div style="border-left:3px dashed #ccc;padding:8px 12px;margin-bottom:8px;background:#fafafa;border-radius:0 6px 6px 0;">
-  <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
-    <strong style="font-size:13px;color:#111;">[Título]</strong>
-    <!-- badges opcionais: <span style="background:#e53935;color:#fff;font-size:10px;font-weight:700;padding:2px 7px;border-radius:4px;">Ao vivo</span> -->
-  </div>
-  <span style="font-size:12px;color:#555;">[Repórter] · [Local] · [Horário se houver]</span>
-</div>
-<hr style="border:none;border-top:1px solid #eee;margin:12px 0"/>
-<p style="font-size:11px;color:#aaa;margin:0;">[N] cobertura(s) prevista(s) · [Cidades]</p>
-
-DADOS REAIS:
-PAUTAS DE HOJE (${hoje}):
-${pautasHoje.length > 0 ? pautasHoje.map(p => `- ${p.titulo} | Repórter: ${p.reporter} | ${p.conteudo?.slice(0,300)}`).join('\n') : 'Nenhuma pauta cadastrada para hoje.'}
-
-RELATÓRIOS DE HOJE:
-${relHoje.length > 0 ? relHoje.map(r => `- ${r.reporter}: ${r.texto?.slice(0,200)}`).join('\n') : 'Nenhum relatório.'}
-
-PAUTAS DE AMANHÃ (${amanha}):
-${pautasAmanha.length > 0 ? pautasAmanha.map(p => `- ${p.titulo} | Repórter: ${p.reporter} | ${p.conteudo?.slice(0,300)}`).join('\n') : 'Nenhuma pauta cadastrada para amanhã.'}
-
-Gere APENAS o HTML do relatório, sem comentários, sem explicações, sem markdown.`
-
     try {
       const res = await fetch('/api/gerar-relatorio', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt }),
+        body: JSON.stringify({ pautasHoje, relHoje, pautasAmanha, hoje, amanha }),
       })
       const data = await res.json()
       setRelatorioGerado(data.html || '<p>Erro ao gerar relatório.</p>')
