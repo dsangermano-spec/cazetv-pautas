@@ -6,7 +6,7 @@ const VAZIO_RELATORIO = { data: '', reporter: '', texto: '' }
 const VAZIO_PREVISAO = { data: '', dataFim: '', titulo: '', descricao: '' }
 const VAZIO_CONTATO = { nome: '', telefone: '', cargo: '' }
 const VAZIO_PEDIDO = { data: '', quem: '', reporter: '', local: '', descricao: '' }
-const VAZIO_METRICA = { data: '', titulo: '', reporter: '', plataforma: '', noAr: 'sim', views: '' }
+const VAZIO_METRICA = { data: '', titulo: '', reporter: '', plataformas: [], noAr: 'sim', views: '', postsInsta: '', entradasYT: '', entradasProg: '', entradasTrans: '' }
 
 const AMARELO = '#FFD600'
 const LARANJA = '#FF6B00'
@@ -145,13 +145,25 @@ function AbaMetricas({ metricas, onSalvar, onDeletar, onEditar, pautas }) {
   const [filtroPlat, setFiltroPlat] = useState('Todas')
   const [buscaPauta, setBuscaPauta] = useState('')
 
+  // helper: normaliza plataformas para sempre ser array
+  function getPlats(m) {
+    if (Array.isArray(m.plataformas) && m.plataformas.length > 0) return m.plataformas
+    if (m.plataforma) return [m.plataforma]
+    return []
+  }
+
+  function togglePlat(p) {
+    const atual = form.plataformas || []
+    setForm({ ...form, plataformas: atual.includes(p) ? atual.filter(x => x !== p) : [...atual, p] })
+  }
+
   const pautasFiltradas = (pautas||[]).filter(p =>
     p.titulo.toLowerCase().includes(buscaPauta.toLowerCase()) ||
     (p.reporter||'').toLowerCase().includes(buscaPauta.toLowerCase())
   )
 
   function importarPauta(p) {
-    setForm({ data: p.data, titulo: p.titulo, reporter: p.reporter, plataforma: '', noAr: 'sim', views: '' })
+    setForm({ data: p.data, titulo: p.titulo, reporter: p.reporter, plataformas: [], noAr: 'sim', views: '', postsInsta: '', entradasYT: '', entradasProg: '', entradasTrans: '' })
     setModoImportar(false)
     setMostrarForm(true)
   }
@@ -160,10 +172,10 @@ function AbaMetricas({ metricas, onSalvar, onDeletar, onEditar, pautas }) {
   const noAr = metricas.filter(m => m.noAr === 'sim').length
   const aproveitamento = total > 0 ? Math.round((noAr/total)*100) : 0
   const totalViews = metricas.reduce((acc, m) => acc + (parseInt(m.views)||0), 0)
-  const filtradas = filtroPlat === 'Todas' ? metricas : metricas.filter(m => m.plataforma === filtroPlat)
+  const filtradas = filtroPlat === 'Todas' ? metricas : metricas.filter(m => getPlats(m).includes(filtroPlat))
 
   function iniciarEdicao(m) {
-    setForm({ data:m.data, titulo:m.titulo, reporter:m.reporter, plataforma:m.plataforma, noAr:m.noAr, views:m.views||'' })
+    setForm({ data:m.data, titulo:m.titulo, reporter:m.reporter, plataformas:getPlats(m), noAr:m.noAr, views:m.views||'', postsInsta:m.postsInsta||'', entradasYT:m.entradasYT||'', entradasProg:m.entradasProg||'', entradasTrans:m.entradasTrans||'' })
     setEditando(m.id)
     setMostrarForm(true)
   }
@@ -179,6 +191,7 @@ function AbaMetricas({ metricas, onSalvar, onDeletar, onEditar, pautas }) {
   function cancelar() { setForm(VAZIO_METRICA); setEditando(null); setMostrarForm(false) }
 
   const corAprov = aproveitamento >= 75 ? VERDE : aproveitamento >= 50 ? AMARELO : '#ff4444'
+  const coresPlat = [AMARELO, '#E1306C', '#9146FF', '#00b4d8']
 
   return (
     <div style={{ padding:'1.5rem', overflowY:'auto', flex:1 }}>
@@ -200,16 +213,15 @@ function AbaMetricas({ metricas, onSalvar, onDeletar, onEditar, pautas }) {
         <div style={{ background:CARD, borderRadius:10, padding:'16px' }}>
           <div style={{ fontSize:12, fontWeight:700, color:SUBTEXTO, textTransform:'uppercase', letterSpacing:0.5, marginBottom:12 }}>Pautas no ar por plataforma</div>
           {PLATAFORMAS.map((p, i) => {
-            const count = metricas.filter(m => m.plataforma === p && m.noAr === 'sim').length
+            const count = metricas.filter(m => getPlats(m).includes(p) && m.noAr === 'sim').length
             const pct = noAr > 0 ? Math.round((count/noAr)*100) : 0
-            const cores = [AMARELO, '#E1306C', '#9146FF', '#00b4d8']
             return (
               <div key={p} style={{ marginBottom:10 }}>
                 <div style={{ display:'flex', justifyContent:'space-between', fontSize:12, color:TEXTO, marginBottom:4 }}>
                   <span>{p}</span><span style={{ color:SUBTEXTO }}>{count} ({pct}%)</span>
                 </div>
                 <div style={{ background:'#2A2A2A', borderRadius:4, height:8 }}>
-                  <div style={{ background:cores[i], borderRadius:4, height:8, width:`${pct}%`, transition:'width 0.3s' }} />
+                  <div style={{ background:coresPlat[i], borderRadius:4, height:8, width:`${pct}%`, transition:'width 0.3s' }} />
                 </div>
               </div>
             )
@@ -283,14 +295,27 @@ function AbaMetricas({ metricas, onSalvar, onDeletar, onEditar, pautas }) {
               <div><label style={{ fontSize:11, color:SUBTEXTO, fontWeight:700, textTransform:'uppercase' }}>Repórter</label><input type="text" placeholder="Nome" value={form.reporter} onChange={e => setForm({...form,reporter:e.target.value})} style={inp} /></div>
             </div>
             <div style={{ marginBottom:10 }}><label style={{ fontSize:11, color:SUBTEXTO, fontWeight:700, textTransform:'uppercase' }}>Título da pauta</label><input type="text" placeholder="Nome da pauta" value={form.titulo} onChange={e => setForm({...form,titulo:e.target.value})} style={inp} /></div>
-            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:10, marginBottom:14 }}>
-              <div>
-                <label style={{ fontSize:11, color:SUBTEXTO, fontWeight:700, textTransform:'uppercase' }}>Plataforma</label>
-                <select value={form.plataforma} onChange={e => setForm({...form,plataforma:e.target.value})} style={{...inp, cursor:'pointer'}}>
-                  <option value="">Selecione</option>
-                  {PLATAFORMAS.map(p => <option key={p} value={p}>{p}</option>)}
-                </select>
+
+            <div style={{ marginBottom:14 }}>
+              <label style={{ fontSize:11, color:SUBTEXTO, fontWeight:700, textTransform:'uppercase', display:'block', marginBottom:8 }}>Plataformas (selecione uma ou mais)</label>
+              <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
+                {PLATAFORMAS.map((p, i) => {
+                  const sel = (form.plataformas||[]).includes(p)
+                  return (
+                    <button key={p} type="button" onClick={() => togglePlat(p)} style={{
+                      padding:'6px 14px', borderRadius:20, cursor:'pointer', fontSize:12, fontWeight:700,
+                      border: sel ? 'none' : `1px solid ${BORDA}`,
+                      background: sel ? coresPlat[i] : '#2A2A2A',
+                      color: sel ? '#fff' : SUBTEXTO,
+                      transition:'all 0.15s',
+                    }}>{p}</button>
+                  )
+                })}
               </div>
+              {(form.plataformas||[]).length === 0 && <p style={{ fontSize:11, color:'#555', margin:'6px 0 0' }}>Nenhuma selecionada</p>}
+            </div>
+
+            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginBottom:10 }}>
               <div>
                 <label style={{ fontSize:11, color:SUBTEXTO, fontWeight:700, textTransform:'uppercase' }}>Entrou no ar?</label>
                 <select value={form.noAr} onChange={e => setForm({...form,noAr:e.target.value})} style={{...inp, cursor:'pointer'}}>
@@ -299,10 +324,42 @@ function AbaMetricas({ metricas, onSalvar, onDeletar, onEditar, pautas }) {
                 </select>
               </div>
               <div>
-                <label style={{ fontSize:11, color:SUBTEXTO, fontWeight:700, textTransform:'uppercase' }}>Visualizações</label>
+                <label style={{ fontSize:11, color:SUBTEXTO, fontWeight:700, textTransform:'uppercase' }}>Total de visualizações</label>
                 <input type="number" placeholder="Ex: 50000" value={form.views} onChange={e => setForm({...form,views:e.target.value})} style={inp} />
               </div>
             </div>
+
+            {(form.plataformas||[]).length > 0 && (
+              <div style={{ background:'#1a1a1a', border:`1px solid #333`, borderRadius:10, padding:'12px 14px', marginBottom:14 }}>
+                <p style={{ fontSize:10, color:SUBTEXTO, fontWeight:700, textTransform:'uppercase', letterSpacing:0.5, margin:'0 0 10px' }}>Detalhes por plataforma</p>
+                <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(160px, 1fr))', gap:10 }}>
+                  {(form.plataformas||[]).includes('Instagram') && (
+                    <div>
+                      <label style={{ fontSize:11, color:'#FFD600', fontWeight:700, textTransform:'uppercase' }}>Posts Instagram</label>
+                      <input type="number" placeholder="Qtd. posts" value={form.postsInsta} onChange={e => setForm({...form,postsInsta:e.target.value})} style={inp} />
+                    </div>
+                  )}
+                  {(form.plataformas||[]).includes('YouTube') && (
+                    <div>
+                      <label style={{ fontSize:11, color:'#E1306C', fontWeight:700, textTransform:'uppercase' }}>Entradas YouTube</label>
+                      <input type="number" placeholder="Qtd. entradas" value={form.entradasYT} onChange={e => setForm({...form,entradasYT:e.target.value})} style={inp} />
+                    </div>
+                  )}
+                  {(form.plataformas||[]).includes('Programas') && (
+                    <div>
+                      <label style={{ fontSize:11, color:'#9146FF', fontWeight:700, textTransform:'uppercase' }}>Entradas Programas</label>
+                      <input type="number" placeholder="Qtd. entradas" value={form.entradasProg} onChange={e => setForm({...form,entradasProg:e.target.value})} style={inp} />
+                    </div>
+                  )}
+                  {(form.plataformas||[]).includes('Transmissões') && (
+                    <div>
+                      <label style={{ fontSize:11, color:'#00b4d8', fontWeight:700, textTransform:'uppercase' }}>Entradas Transmissões</label>
+                      <input type="number" placeholder="Qtd. entradas" value={form.entradasTrans} onChange={e => setForm({...form,entradasTrans:e.target.value})} style={inp} />
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
             <div style={{ display:'flex', gap:8 }}>
               <button onClick={salvar} style={{ background:AMARELO, color:'#000', border:'none', borderRadius:8, padding:'9px 18px', cursor:'pointer', fontWeight:700, fontSize:13 }}>{editando?'Salvar edição':'Adicionar'}</button>
               <button onClick={cancelar} style={{ background:'transparent', border:`1px solid ${BORDA}`, borderRadius:8, padding:'9px 18px', cursor:'pointer', color:SUBTEXTO, fontSize:13 }}>Cancelar</button>
@@ -317,7 +374,7 @@ function AbaMetricas({ metricas, onSalvar, onDeletar, onEditar, pautas }) {
             <table style={{ width:'100%', borderCollapse:'collapse', fontSize:13 }}>
               <thead>
                 <tr>
-                  {['Data','Pauta','Repórter','Plataforma','No ar','Views',''].map(h => (
+                  {['Data','Pauta','Repórter','Plataformas','No ar','Views',''].map(h => (
                     <th key={h} style={{ textAlign:'left', color:SUBTEXTO, fontSize:11, fontWeight:600, textTransform:'uppercase', padding:'6px 8px', borderBottom:`0.5px solid ${BORDA}` }}>{h}</th>
                   ))}
                 </tr>
@@ -328,8 +385,16 @@ function AbaMetricas({ metricas, onSalvar, onDeletar, onEditar, pautas }) {
                     <td style={{ padding:'9px 8px', color:SUBTEXTO, borderBottom:`0.5px solid ${BORDA}`, whiteSpace:'nowrap' }}>{formatarDataSimples(m.data)}</td>
                     <td style={{ padding:'9px 8px', color:TEXTO, borderBottom:`0.5px solid ${BORDA}`, maxWidth:200 }}>{m.titulo}</td>
                     <td style={{ padding:'9px 8px', color:SUBTEXTO, borderBottom:`0.5px solid ${BORDA}`, whiteSpace:'nowrap' }}>{m.reporter||'—'}</td>
-                    <td style={{ padding:'9px 8px', borderBottom:`0.5px solid ${BORDA}`, whiteSpace:'nowrap' }}>
-                      {m.plataforma ? <span style={{ background:'#2A2A2A', color:TEXTO, borderRadius:20, padding:'2px 10px', fontSize:11 }}>{m.plataforma}</span> : '—'}
+                    <td style={{ padding:'9px 8px', borderBottom:`0.5px solid ${BORDA}` }}>
+                      <div style={{ display:'flex', gap:4, flexWrap:'wrap' }}>
+                        {getPlats(m).length > 0
+                          ? getPlats(m).map(p => {
+                              const i = PLATAFORMAS.indexOf(p)
+                              return <span key={p} style={{ background: i >= 0 ? coresPlat[i] : '#2A2A2A', color:'#fff', borderRadius:20, padding:'2px 10px', fontSize:11, fontWeight:600 }}>{p}</span>
+                            })
+                          : <span style={{ color:SUBTEXTO }}>—</span>
+                        }
+                      </div>
                     </td>
                     <td style={{ padding:'9px 8px', borderBottom:`0.5px solid ${BORDA}` }}>
                       {m.noAr==='sim'
@@ -337,7 +402,13 @@ function AbaMetricas({ metricas, onSalvar, onDeletar, onEditar, pautas }) {
                         : <span style={{ background:'#2a0a0a', color:'#ff4444', border:'0.5px solid #ff4444', borderRadius:20, padding:'2px 10px', fontSize:11, fontWeight:700 }}>✗ Não</span>
                       }
                     </td>
-                    <td style={{ padding:'9px 8px', color:AMARELO, fontWeight:700, borderBottom:`0.5px solid ${BORDA}` }}>{formatViews(m.views)}</td>
+                    <td style={{ padding:'9px 8px', color:AMARELO, fontWeight:700, borderBottom:`0.5px solid ${BORDA}` }}>
+                      <div>{formatViews(m.views)}</div>
+                      {m.postsInsta && <div style={{ fontSize:10, color:'#FFD600', opacity:0.7 }}>📸 {m.postsInsta} posts</div>}
+                      {m.entradasYT && <div style={{ fontSize:10, color:'#E1306C', opacity:0.9 }}>▶ {m.entradasYT} ent. YT</div>}
+                      {m.entradasProg && <div style={{ fontSize:10, color:'#9146FF', opacity:0.9 }}>📺 {m.entradasProg} ent. Prog</div>}
+                      {m.entradasTrans && <div style={{ fontSize:10, color:'#00b4d8', opacity:0.9 }}>📡 {m.entradasTrans} ent. Trans</div>}
+                    </td>
                     <td style={{ padding:'9px 8px', borderBottom:`0.5px solid ${BORDA}`, whiteSpace:'nowrap' }}>
                       <button onClick={() => iniciarEdicao(m)} style={{ background:'none', border:'none', color:AMARELO, cursor:'pointer', fontSize:12, fontWeight:600, marginRight:8 }}>Editar</button>
                       <button onClick={() => onDeletar(m.id)} style={{ background:'none', border:'none', color:'#ff4444', cursor:'pointer', fontSize:12, fontWeight:600 }}>Deletar</button>
