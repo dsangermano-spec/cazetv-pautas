@@ -17,7 +17,7 @@ function badge(texto, cor) {
 function badgesParaPauta(conteudo = '', titulo = '') {
   const txt = (conteudo + titulo).toLowerCase()
   let b = ''
-  if (txt.includes('ao vivo') || txt.includes('link ao vivo') || txt.includes('entrada ao vivo')) b += badge('Ao vivo', '#e53935')
+  if (txt.includes('link ao vivo') || txt.includes('📡') || txt.includes('entrada ao vivo\n') || /transmiss[aã]o ao vivo/.test(txt)) b += badge('Ao vivo', '#e53935')
   if (txt.includes('redes') || txt.includes('instagram') || txt.includes('youtube')) b += badge('Redes', '#1a7a4a')
   if (txt.includes('boletim')) b += badge('Boletim', '#f9a825')
   if (txt.includes(' vt ') || txt.includes('transmissão') || txt.includes('transmissao')) b += badge('VT', '#5c35cc')
@@ -38,24 +38,24 @@ function cardHoje(p) {
   const horario = p.conteudo?.match(/⏰([^\n]+)/)?.[1]?.trim() || ''
   const resumo = [p.reporter, local, horario].filter(Boolean).join(' · ')
   return `<div style="border-left:3px solid #ccc;padding:8px 12px;margin-bottom:8px;background:#fafafa;border-radius:0 6px 6px 0;">
-  <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
-    <strong style="font-size:13px;color:#111;">${iconeParaPauta(p.titulo)} ${p.titulo}</strong>
-    <div style="flex-shrink:0;">${badgesParaPauta(p.conteudo, p.titulo)}</div>
-  </div>
-  <span style="font-size:12px;color:#555;">${resumo}</span>
-</div>`
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
+      <strong style="font-size:13px;color:#111;">${iconeParaPauta(p.titulo)} ${p.titulo}</strong>
+      <div style="flex-shrink:0;">${badges(p.conteudo, p.titulo)}</div>
+    </div>
+    <span style="font-size:12px;color:#555;">${resumo}</span>
+  </div>`
 }
 function cardAmanha(p) {
   const local = p.conteudo?.match(/📍([^\n]+)/)?.[1]?.trim() || ''
   const horario = p.conteudo?.match(/⏰([^\n]+)/)?.[1]?.trim() || ''
   const resumo = [p.reporter, local, horario].filter(Boolean).join(' · ')
   return `<div style="border-left:3px dashed #ccc;padding:8px 12px;margin-bottom:8px;background:#fafafa;border-radius:0 6px 6px 0;">
-  <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
-    <strong style="font-size:13px;color:#111;">${p.titulo}</strong>
-    <div style="flex-shrink:0;">${badgesParaPauta(p.conteudo, p.titulo)}</div>
-  </div>
-  <span style="font-size:12px;color:#555;">${resumo}</span>
-</div>`
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
+      <strong style="font-size:13px;color:#111;">${p.titulo}</strong>
+      <div style="flex-shrink:0;">${badges(p.conteudo, p.titulo)}</div>
+    </div>
+    <span style="font-size:12px;color:#555;">${resumo}</span>
+  </div>`
 }
 
 export async function GET(req) {
