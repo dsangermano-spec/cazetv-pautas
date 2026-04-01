@@ -456,8 +456,8 @@ export default function Home() {
     setDataSelecionada(futura || datas[datas.length - 1])
   }, [aba, pautas, relatorios, previsoes, pedidos])
 
-  async function carregarTudo() {
-    setLoading(true)
+async function carregarTudo() {
+    try { setLoading(true)
     const [rP, rR, rPrev, rC, rPed, rM] = await Promise.all([
       fetch('/api/pautas').then(r => r.json()),
       fetch('/api/relatorios').then(r => r.json()),
