@@ -472,7 +472,7 @@ async function carregarTudo() {
     setContatos(rC.sort((a,b) => a.nome.localeCompare(b.nome)))
     setPedidos(rPed.sort((a,b) => a.data.localeCompare(b.data)))
     setMetricas(rM.sort((a,b) => b.data.localeCompare(a.data)))
-    setLoading(false)
+    } catch(e) { console.error(e) } finally { setLoading(false) }
   }
 
   async function carregarPautas() { const r = await fetch('/api/pautas'); setPautas((await r.json()).sort((a,b) => a.data.localeCompare(b.data))) }
