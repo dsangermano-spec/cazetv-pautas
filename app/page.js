@@ -474,20 +474,21 @@ export default function Home() {
   async function carregarTudo() {
     try {
       setLoading(true)
+      const safe = (p) => p.catch(() => [])
       const [rP, rR, rPrev, rC, rPed, rM] = await Promise.all([
-        fetch('/api/pautas').then(r => r.json()),
-        fetch('/api/relatorios').then(r => r.json()),
-        fetch('/api/previsoes').then(r => r.json()),
-        fetch('/api/contatos').then(r => r.json()),
-        fetch('/api/pedidos').then(r => r.json()),
-        fetch('/api/metricas').then(r => r.json()),
+        safe(fetch('/api/pautas').then(r => r.json())),
+        safe(fetch('/api/relatorios').then(r => r.json())),
+        safe(fetch('/api/previsoes').then(r => r.json())),
+        safe(fetch('/api/contatos').then(r => r.json())),
+        safe(fetch('/api/pedidos').then(r => r.json())),
+        safe(fetch('/api/metricas').then(r => r.json())),
       ])
-      setPautas(rP.sort((a,b) => a.data.localeCompare(b.data)))
-      setRelatorios(rR.sort((a,b) => a.data.localeCompare(b.data)))
-      setPrevisoes(rPrev.sort((a,b) => a.data.localeCompare(b.data)))
-      setContatos(rC.sort((a,b) => a.nome.localeCompare(b.nome)))
-      setPedidos(rPed.sort((a,b) => a.data.localeCompare(b.data)))
-      setMetricas(rM.sort((a,b) => b.data.localeCompare(a.data)))
+      setPautas((Array.isArray(rP)?rP:[]).sort((a,b) => a.data.localeCompare(b.data)))
+      setRelatorios((Array.isArray(rR)?rR:[]).sort((a,b) => a.data.localeCompare(b.data)))
+      setPrevisoes((Array.isArray(rPrev)?rPrev:[]).sort((a,b) => a.data.localeCompare(b.data)))
+      setContatos((Array.isArray(rC)?rC:[]).sort((a,b) => a.nome.localeCompare(b.nome)))
+      setPedidos((Array.isArray(rPed)?rPed:[]).sort((a,b) => a.data.localeCompare(b.data)))
+      setMetricas((Array.isArray(rM)?rM:[]).sort((a,b) => b.data.localeCompare(a.data)))
     } catch(e) { console.error(e) } finally { setLoading(false) }
   }
 
@@ -502,9 +503,9 @@ export default function Home() {
     setGerando(true)
     setRelatorioGerado('')
     try {
-      const res = await fetch('/api/gerar-relatorio', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({}) })
-      const data = await res.json()
-      setRelatorioGerado(data.html || '<p>Erro ao gerar relatório.</p>')
+      const res = await fetch('/api/relatorio-html', { method: 'GET' })
+      const html = await res.text()
+      setRelatorioGerado(html || '<p>Erro ao gerar relatório.</p>')
     } catch(e) {
       setRelatorioGerado('<p style="color:red">Erro ao conectar. Tente novamente.</p>')
     }
