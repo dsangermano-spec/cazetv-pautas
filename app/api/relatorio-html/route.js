@@ -43,7 +43,7 @@ export async function GET() {
       ? relHoje.map(r => `
         <div style="border-left:4px solid #FFD600;padding:12px 16px;margin-bottom:12px;background:#fffef0;border-radius:0 8px 8px 0;">
           <div style="font-size:12px;font-weight:700;color:#888;text-transform:uppercase;margin-bottom:4px;">📝 ${r.reporter}</div>
-          <div style="font-size:14px;color:#111;line-height:1.6;white-space:pre-wrap;">${r.texto || ''}</div>
+          <div style="font-size:14px;color:#111;line-height:1.6;white-space:pre-wrap;">${(r.texto || '').replace(/\n/g, '<br/>')}</div>
         </div>`).join('')
       : '<p style="font-size:13px;color:#aaa;font-style:italic;">Nenhum relatório registrado hoje.</p>'
 
