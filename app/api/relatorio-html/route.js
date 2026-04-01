@@ -1,6 +1,8 @@
 import { Redis } from '@upstash/redis'
 import { NextResponse } from 'next/server'
 
+export const dynamic = 'force-dynamic'
+
 const redis = Redis.fromEnv()
 
 function fmtLonga(str) {
