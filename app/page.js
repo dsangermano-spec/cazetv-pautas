@@ -440,11 +440,26 @@ export default function Home() {
   const hasSidebar = !['contatos','busca','calendario','metricas'].includes(aba)
   const corAba = aba==='pedidos'?LARANJA:AMARELO
 
+  function getDatasUnicas(lista) {
+    const set = new Set()
+    lista.forEach(item => getDatasNoPeriodo(item.data, item.dataFim).forEach(d => set.add(d)))
+    return Array.from(set).sort()
+  }
+  function getItensDoDia(lista, data) { return lista.filter(item => getDatasNoPeriodo(item.data, item.dataFim).includes(data)) }
+
   const datasP = getDatasUnicas(pautas)
   const datasR = getDatasUnicas(relatorios)
   const datasV = getDatasUnicas(previsoes)
   const datasPed = [...new Set(pedidos.map(p => p.data))].sort()
   const datas = aba==='pautas'?datasP:aba==='relatorios'?datasR:aba==='previsoes'?datasV:datasPed
+
+  // ✅ CORREÇÃO: itensDoDia agora está definida corretamente
+  const itensDoDia = dataSelecionada
+    ? aba==='pautas' ? getItensDoDia(pautas, dataSelecionada)
+    : aba==='relatorios' ? getItensDoDia(relatorios, dataSelecionada)
+    : aba==='previsoes' ? getItensDoDia(previsoes, dataSelecionada)
+    : pedidos.filter(p => p.data === dataSelecionada)
+    : []
 
   useEffect(() => { carregarTudo() }, [])
 
@@ -456,22 +471,23 @@ export default function Home() {
     setDataSelecionada(futura || datas[datas.length - 1])
   }, [aba, pautas, relatorios, previsoes, pedidos])
 
-async function carregarTudo() {
-    try { setLoading(true)
-    const [rP, rR, rPrev, rC, rPed, rM] = await Promise.all([
-      fetch('/api/pautas').then(r => r.json()),
-      fetch('/api/relatorios').then(r => r.json()),
-      fetch('/api/previsoes').then(r => r.json()),
-      fetch('/api/contatos').then(r => r.json()),
-      fetch('/api/pedidos').then(r => r.json()),
-      fetch('/api/metricas').then(r => r.json()),
-    ])
-    setPautas(rP.sort((a,b) => a.data.localeCompare(b.data)))
-    setRelatorios(rR.sort((a,b) => a.data.localeCompare(b.data)))
-    setPrevisoes(rPrev.sort((a,b) => a.data.localeCompare(b.data)))
-    setContatos(rC.sort((a,b) => a.nome.localeCompare(b.nome)))
-    setPedidos(rPed.sort((a,b) => a.data.localeCompare(b.data)))
-    setMetricas(rM.sort((a,b) => b.data.localeCompare(a.data)))
+  async function carregarTudo() {
+    try {
+      setLoading(true)
+      const [rP, rR, rPrev, rC, rPed, rM] = await Promise.all([
+        fetch('/api/pautas').then(r => r.json()),
+        fetch('/api/relatorios').then(r => r.json()),
+        fetch('/api/previsoes').then(r => r.json()),
+        fetch('/api/contatos').then(r => r.json()),
+        fetch('/api/pedidos').then(r => r.json()),
+        fetch('/api/metricas').then(r => r.json()),
+      ])
+      setPautas(rP.sort((a,b) => a.data.localeCompare(b.data)))
+      setRelatorios(rR.sort((a,b) => a.data.localeCompare(b.data)))
+      setPrevisoes(rPrev.sort((a,b) => a.data.localeCompare(b.data)))
+      setContatos(rC.sort((a,b) => a.nome.localeCompare(b.nome)))
+      setPedidos(rPed.sort((a,b) => a.data.localeCompare(b.data)))
+      setMetricas(rM.sort((a,b) => b.data.localeCompare(a.data)))
     } catch(e) { console.error(e) } finally { setLoading(false) }
   }
 
@@ -529,13 +545,6 @@ async function carregarTudo() {
     janela.focus()
     setTimeout(() => { janela.print() }, 400)
   }
-
-  function getDatasUnicas(lista) {
-    const set = new Set()
-    lista.forEach(item => getDatasNoPeriodo(item.data, item.dataFim).forEach(d => set.add(d)))
-    return Array.from(set).sort()
-  }
-  function getItensDoDia(lista, data) { return lista.filter(item => getDatasNoPeriodo(item.data, item.dataFim).includes(data)) }
 
   function enviarWhatsApp(pauta) {
     const contato = contatos.find(c => c.nome.toLowerCase().includes(pauta.reporter.toLowerCase()) || pauta.reporter.toLowerCase().includes(c.nome.toLowerCase()))
