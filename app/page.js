@@ -145,6 +145,8 @@ function AbaMetricas({ metricas, onSalvar, onDeletar, onEditar, pautas }) {
   const [editando, setEditando] = useState(null)
   const [filtroPlat, setFiltroPlat] = useState('Todas')
   const [buscaPauta, setBuscaPauta] = useState('')
+  const [periodoInicio, setPeriodoInicio] = useState('')
+  const [periodoFim, setPeriodoFim] = useState('')
 
   function getPlats(m) {
     if (Array.isArray(m.plataformas) && m.plataformas.length > 0) return m.plataformas
@@ -168,11 +170,73 @@ function AbaMetricas({ metricas, onSalvar, onDeletar, onEditar, pautas }) {
     setMostrarForm(true)
   }
 
-  const total = metricas.length
-  const noAr = metricas.filter(m => m.noAr === 'sim').length
+  const metricasPeriodo = metricas.filter(m => {
+    if (periodoInicio && m.data < periodoInicio) return false
+    if (periodoFim && m.data > periodoFim) return false
+    return true
+  })
+
+  const total = metricasPeriodo.length
+  const noAr = metricasPeriodo.filter(m => m.noAr === 'sim').length
   const aproveitamento = total > 0 ? Math.round((noAr/total)*100) : 0
-  const totalViews = metricas.reduce((acc, m) => acc + (parseInt(m.views)||0), 0)
-  const filtradas = filtroPlat === 'Todas' ? metricas : metricas.filter(m => getPlats(m).includes(filtroPlat))
+  const totalViews = metricasPeriodo.reduce((acc, m) => acc + (parseInt(m.views)||0), 0)
+  const filtradas = filtroPlat === 'Todas' ? metricasPeriodo : metricasPeriodo.filter(m => getPlats(m).includes(filtroPlat))
+
+  function gerarPDFMetricas() {
+    const periodoLabel = periodoInicio && periodoFim
+      ? `${new Date(periodoInicio+'T12:00:00').toLocaleDateString('pt-BR')} a ${new Date(periodoFim+'T12:00:00').toLocaleDateString('pt-BR')}`
+      : periodoInicio ? `A partir de ${new Date(periodoInicio+'T12:00:00').toLocaleDateString('pt-BR')}`
+      : periodoFim ? `Até ${new Date(periodoFim+'T12:00:00').toLocaleDateString('pt-BR')}`
+      : 'Todos os períodos'
+
+    const linhas = filtradas.sort((a,b) => b.data.localeCompare(a.data)).map(m => `
+      <tr>
+        <td style="padding:8px;border-bottom:1px solid #eee;">${new Date(m.data+'T12:00:00').toLocaleDateString('pt-BR')}</td>
+        <td style="padding:8px;border-bottom:1px solid #eee;font-weight:700;">${m.titulo}</td>
+        <td style="padding:8px;border-bottom:1px solid #eee;">${m.reporter||'—'}</td>
+        <td style="padding:8px;border-bottom:1px solid #eee;">${getPlats(m).join(', ')||'—'}</td>
+        <td style="padding:8px;border-bottom:1px solid #eee;text-align:center;">${m.noAr==='sim'?'✓ Sim':'✗ Não'}</td>
+        <td style="padding:8px;border-bottom:1px solid #eee;text-align:right;">${formatViews(m.views)}</td>
+      </tr>`).join('')
+
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"/>
+    <title>Métricas CazéTV — ${periodoLabel}</title>
+    <style>body{font-family:Arial,sans-serif;font-size:13px;color:#111;padding:32px 40px;max-width:900px;margin:0 auto;}
+    table{width:100%;border-collapse:collapse;}th{text-align:left;padding:8px;border-bottom:2px solid #FFD600;font-size:11px;text-transform:uppercase;color:#555;}
+    @media print{body{padding:0;}@page{margin:15mm;}}</style></head>
+    <body>
+      <div style="border-bottom:4px solid #FFD600;padding-bottom:16px;margin-bottom:24px;">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px;">
+          <span style="background:#FFD600;color:#000;font-weight:900;font-size:18px;padding:6px 12px;border-radius:6px;">CazéTV</span>
+          <span style="font-size:13px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:1px;">Métricas</span>
+        </div>
+        <div style="font-size:12px;color:#999;text-transform:uppercase;letter-spacing:1px;">${periodoLabel}</div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px;">
+        ${[
+          {l:'Total de pautas',v:total},
+          {l:'Entraram no ar',v:noAr},
+          {l:'Aproveitamento',v:`${aproveitamento}%`},
+          {l:'Total de views',v:formatViews(totalViews)},
+        ].map(({l,v})=>`<div style="border:1px solid #eee;border-radius:8px;padding:12px 16px;"><div style="font-size:10px;color:#888;text-transform:uppercase;margin-bottom:4px;">${l}</div><div style="font-size:22px;font-weight:700;">${v}</div></div>`).join('')}
+      </div>
+      <table>
+        <thead><tr>
+          <th>Data</th><th>Pauta</th><th>Repórter</th><th>Plataformas</th><th style="text-align:center;">No ar</th><th style="text-align:right;">Views</th>
+        </tr></thead>
+        <tbody>${linhas}</tbody>
+      </table>
+      <div style="margin-top:24px;border-top:1px solid #eee;padding-top:12px;">
+        <p style="font-size:11px;color:#bbb;margin:0;">Gerado em ${new Date().toLocaleString('pt-BR')} · CazéTV Pautas</p>
+      </div>
+    </body></html>`
+
+    const janela = window.open('', '_blank')
+    janela.document.write(html)
+    janela.document.close()
+    janela.focus()
+    setTimeout(() => janela.print(), 400)
+  }
 
   function iniciarEdicao(m) {
     setForm({ data:m.data, titulo:m.titulo, reporter:m.reporter, plataformas:getPlats(m), noAr:m.noAr, views:m.views||'', postsInsta:m.postsInsta||'', entradasYT:m.entradasYT||'', entradasProg:m.entradasProg||'', entradasTrans:m.entradasTrans||'' })
@@ -249,6 +313,15 @@ function AbaMetricas({ metricas, onSalvar, onDeletar, onEditar, pautas }) {
       </div>
 
       <div style={{ background:CARD, borderRadius:10, padding:'16px' }}>
+        <div style={{ background:'#1a1a1a', border:`1px solid ${BORDA}`, borderRadius:10, padding:'12px 16px', marginBottom:14, display:'flex', alignItems:'center', gap:12, flexWrap:'wrap' }}>
+          <span style={{ fontSize:11, fontWeight:700, color:SUBTEXTO, textTransform:'uppercase', letterSpacing:0.5 }}>Período</span>
+          <input type="date" value={periodoInicio} onChange={e => setPeriodoInicio(e.target.value)} style={{...inp, marginTop:0, width:'auto', colorScheme:'dark'}} />
+          <span style={{ color:SUBTEXTO, fontSize:13 }}>até</span>
+          <input type="date" value={periodoFim} onChange={e => setPeriodoFim(e.target.value)} style={{...inp, marginTop:0, width:'auto', colorScheme:'dark'}} />
+          {(periodoInicio||periodoFim) && <button onClick={() => { setPeriodoInicio(''); setPeriodoFim('') }} style={{ background:'none', border:'none', color:'#ff4444', cursor:'pointer', fontSize:12, fontWeight:600 }}>✕ Limpar</button>}
+          {filtradas.length > 0 && <button onClick={gerarPDFMetricas} style={{ marginLeft:'auto', background:AMARELO, color:'#000', border:'none', borderRadius:8, padding:'7px 14px', cursor:'pointer', fontWeight:700, fontSize:12 }}>⬇️ Exportar PDF</button>}
+        </div>
+
         <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:14, flexWrap:'wrap', gap:10 }}>
           <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
             {['Todas', ...PLATAFORMAS].map(p => (
@@ -432,10 +505,7 @@ export default function Home() {
   const [editandoPrev, setEditandoPrev] = useState(null)
   const [formPedido, setFormPedido] = useState(VAZIO_PEDIDO)
   const [editandoPedido, setEditandoPedido] = useState(null)
-  const [modalRelatorio, setModalRelatorio] = useState(false)
-  const [relatorioGerado, setRelatorioGerado] = useState('')
-  const [gerando, setGerando] = useState(false)
-  const [copiado, setCopiado] = useState(false)
+
 
   const hasSidebar = !['contatos','busca','calendario','metricas'].includes(aba)
   const corAba = aba==='pedidos'?LARANJA:AMARELO
@@ -499,53 +569,7 @@ export default function Home() {
   async function carregarPedidos() { const r = await fetch('/api/pedidos'); setPedidos((await r.json()).sort((a,b) => a.data.localeCompare(b.data))) }
   async function carregarMetricas() { const r = await fetch('/api/metricas'); setMetricas((await r.json()).sort((a,b) => b.data.localeCompare(a.data))) }
 
-  async function gerarRelatorio() {
-    setGerando(true)
-    setRelatorioGerado('')
-    try {
-      const res = await fetch('/api/relatorio-html', { method: 'GET' })
-      const html = await res.text()
-      setRelatorioGerado(html || '<p>Erro ao gerar relatório.</p>')
-    } catch(e) {
-      setRelatorioGerado('<p style="color:red">Erro ao conectar. Tente novamente.</p>')
-    }
-    setGerando(false)
-  }
 
-  function copiarRelatorio() {
-    const blob = new Blob([relatorioGerado], { type: 'text/html' })
-    const clipItem = new ClipboardItem({ 'text/html': blob, 'text/plain': new Blob([relatorioGerado.replace(/<[^>]+>/g, '')], { type: 'text/plain' }) })
-    navigator.clipboard.write([clipItem]).then(() => {
-      setCopiado(true)
-      setTimeout(() => setCopiado(false), 2500)
-    }).catch(() => {
-      const el = document.createElement('div')
-      el.innerHTML = relatorioGerado
-      document.body.appendChild(el)
-      const range = document.createRange()
-      range.selectNode(el)
-      window.getSelection().removeAllRanges()
-      window.getSelection().addRange(range)
-      document.execCommand('copy')
-      window.getSelection().removeAllRanges()
-      document.body.removeChild(el)
-      setCopiado(true)
-      setTimeout(() => setCopiado(false), 2500)
-    })
-  }
-
-  function baixarPDF() {
-    const hoje = new Date().toISOString().split('T')[0]
-    const dataLabel = new Date(hoje + 'T12:00:00').toLocaleDateString('pt-BR', { weekday:'long', day:'2-digit', month:'long', year:'numeric' })
-    const janela = window.open('', '_blank')
-    janela.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Pautas CazéTV — ${dataLabel}</title>
-    <style>body { font-family: Arial, sans-serif; font-size: 13px; color: #111; padding: 32px 40px; max-width: 680px; margin: 0 auto; }
-    @media print { body { padding: 0; } @page { margin: 20mm; } }</style>
-    </head><body>${relatorioGerado}</body></html>`)
-    janela.document.close()
-    janela.focus()
-    setTimeout(() => { janela.print() }, 400)
-  }
 
   function enviarWhatsApp(pauta) {
     const contato = contatos.find(c => c.nome.toLowerCase().includes(pauta.reporter.toLowerCase()) || pauta.reporter.toLowerCase().includes(c.nome.toLowerCase()))
@@ -714,41 +738,10 @@ export default function Home() {
       <header style={{ background:'#000', borderBottom:`3px solid ${AMARELO}`, padding:'0.85rem 1.5rem', display:'flex', alignItems:'center', gap:14, flexShrink:0 }}>
         <span style={{ background:AMARELO, color:'#000', fontWeight:900, fontSize:17, padding:'5px 11px', borderRadius:7, letterSpacing:-0.5 }}>CazéTV</span>
         <span style={{ fontWeight:700, fontSize:16, color:TEXTO, letterSpacing:0.3 }}>PAUTAS & RELATÓRIOS</span>
-        <div style={{ marginLeft:'auto' }}>
-          <button onClick={() => { setModalRelatorio(true); gerarRelatorio() }} style={{ background:AMARELO, color:'#000', border:'none', borderRadius:8, padding:'8px 16px', cursor:'pointer', fontWeight:700, fontSize:13 }}>
-            📋 Relatório do dia
-          </button>
-        </div>
+
       </header>
 
-      {modalRelatorio && (
-        <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.8)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:2000 }} onClick={() => setModalRelatorio(false)}>
-          <div style={{ background:'#1A1A1A', border:`1px solid ${BORDA}`, borderRadius:16, width:'90%', maxWidth:680, maxHeight:'92vh', display:'flex', flexDirection:'column', overflow:'hidden' }} onClick={e => e.stopPropagation()}>
-            <div style={{ padding:'16px 20px', borderBottom:`1px solid ${BORDA}`, display:'flex', justifyContent:'space-between', alignItems:'center', flexShrink:0 }}>
-              <span style={{ fontWeight:700, fontSize:15, color:AMARELO }}>📋 Relatório do dia</span>
-              <button onClick={() => setModalRelatorio(false)} style={{ background:'none', border:'none', color:SUBTEXTO, cursor:'pointer', fontSize:18 }}>✕</button>
-            </div>
-            <div style={{ overflowY:'auto', padding:'20px', background:'#fff', color:'#111', fontFamily:'Arial, sans-serif', fontSize:14, lineHeight:1.6 }}>
-              {gerando && (
-                <div style={{ display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', height:200, gap:12 }}>
-                  <div style={{ width:32, height:32, border:'3px solid #eee', borderTop:`3px solid ${AMARELO}`, borderRadius:'50%', animation:'spin 0.8s linear infinite' }} />
-                  <p style={{ color:'#888', fontSize:13 }}>Gerando relatório...</p>
-                  <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
-                </div>
-              )}
-              {!gerando && relatorioGerado && <div dangerouslySetInnerHTML={{ __html: relatorioGerado }} />}
-            </div>
-            {!gerando && relatorioGerado && (
-              <div style={{ padding:'14px 20px', borderTop:`1px solid ${BORDA}`, flexShrink:0, background:'#111', display:'flex', justifyContent:'flex-end', gap:8 }}>
-                <button onClick={() => setModalRelatorio(false)} style={{ background:'transparent', border:`1px solid ${BORDA}`, borderRadius:8, padding:'9px 18px', cursor:'pointer', color:SUBTEXTO, fontSize:13 }}>Fechar</button>
-                <button onClick={() => gerarRelatorio()} style={{ background:'#222', border:`1px solid ${BORDA}`, borderRadius:8, padding:'9px 18px', cursor:'pointer', color:TEXTO, fontSize:13, fontWeight:600 }}>🔄 Regerar</button>
-                <button onClick={copiarRelatorio} style={{ background: copiado ? VERDE : '#222', color: copiado ? '#fff' : TEXTO, border:`1px solid ${copiado ? VERDE : BORDA}`, borderRadius:8, padding:'9px 18px', cursor:'pointer', fontSize:13, fontWeight:600, transition:'all 0.2s' }}>{copiado ? '✅ Copiado!' : '📋 Copiar'}</button>
-                <button onClick={baixarPDF} style={{ background:AMARELO, color:'#000', border:'none', borderRadius:8, padding:'9px 20px', cursor:'pointer', fontWeight:700, fontSize:13 }}>⬇️ Baixar PDF</button>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
+
 
       <div style={{ display:'flex', gap:2, padding:'6px 10px', background:'#0A0A0A', borderBottom:`1px solid ${BORDA}`, flexShrink:0, flexWrap:'wrap' }}>
         {abas.map(a => (
